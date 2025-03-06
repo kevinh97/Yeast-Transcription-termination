@@ -1,0 +1,1905 @@
+---
+title: "R Notebook"
+output: html_notebook
+---
+
+This is an [R Markdown](http://rmarkdown.rstudio.com) Notebook. When you execute code within the notebook, the results appear beneath the code. 
+
+Try executing this chunk by clicking the *Run* button within the chunk or by placing your cursor inside it and pressing *Ctrl+Shift+Enter*. 
+```{r}
+library(readxl)
+
+# Read the Excel file
+tss <- read_excel("/home/guillom/Downloads/Nagalakshmi_tss.xls")
+
+yeast_icg <- read.delim('/home/guillom/Downloads/S288C_reference_genome_R64-5-1_20240529/yeastICG', header = FALSE)
+```
+```{r}
+swap_indices <- tss$SGD_Start > tss$SGD_End
+tss[swap_indices, c("SGD_Start", "SGD_End")] <- tss[swap_indices, c("SGD_End", "SGD_Start")]
+```
+```{r}
+Ysh1_3 <- read.delim(file = "/home/guillom/alignments/keaton_ysh1/ysh1_3chr_genes.bed", header = FALSE)
+Ysh1_3 <- Ysh1_3 %>% select(-V4, -V5, -V7,-V8, -V9, -V15)
+
+Ysh1_2 <- read.delim(file = "/home/guillom/alignments/keaton_ysh1/ysh1_2chr_genes.bed", header = FALSE)
+Ysh1_2 <- Ysh1_2 %>% select(-V4, -V5, -V7,-V8, -V9, -V15)
+
+Ysh1_1 <- read.delim(file = "/home/guillom/alignments/keaton_ysh1/ysh1_1chr_genes.bed", header = FALSE)
+Ysh1_1 <- Ysh1_1 %>% select(-V4, -V5, -V7,-V8, -V9, -V15)
+```
+```{r}
+r15_3 <- read.delim(file = "/home/guillom/alignments/keaton_ysh1/r15_3chr.genes.bed", header = FALSE)
+r15_3 <- r15_3 %>% select(-V4, -V5, -V7,-V8, -V9, -V15)
+
+r15_2 <- read.delim(file = "/home/guillom/alignments/keaton_ysh1/r15_2chr.genes.bed", header = FALSE)
+r15_2 <- r15_2 %>% select(-V4, -V5, -V7,-V8, -V9, -V15)
+
+r15_1 <- read.delim(file = "/home/guillom/alignments/keaton_ysh1/r15_1chr.genes.bed", header = FALSE)
+r15_1 <- r15_1 %>% select(-V4, -V5, -V7,-V8, -V9, -V15)
+```
+```{r}
+library(dplyr)
+tss$combined_coordinates <- paste(tss$Chrom, "_", tss$SGD_Start, "_", tss$SGD_End)
+tss$combined_coordinates <- gsub(" ", "", tss$combined_coordinates)
+Ysh1_1$combined_coordinates <- paste(Ysh1_1$V1, "_", Ysh1_1$V2, "_", Ysh1_1$V3)
+Ysh1_1$combined_coordinates <- gsub(" ", "", Ysh1_1$combined_coordinates)
+Ysh1_2$combined_coordinates <- paste(Ysh1_2$V1, "_", Ysh1_2$V2, "_", Ysh1_2$V3)
+Ysh1_2$combined_coordinates <- gsub(" ", "", Ysh1_2$combined_coordinates)
+Ysh1_3$combined_coordinates <- paste(Ysh1_3$V1, "_", Ysh1_3$V2, "_", Ysh1_3$V3)
+Ysh1_3$combined_coordinates <- gsub(" ", "", Ysh1_3$combined_coordinates)
+gene_annotation_collapsed <- aggregate(
+  . ~ V10,  # Group by V15 and retain all other columns
+  data = Ysh1_1,
+  FUN = function(x) paste(unique(x), collapse = "; ") # Collapse while handling duplicates
+)
+```
+```{r}
+library(dplyr)
+tss$combined_coordinates <- paste(tss$Chrom, "_", tss$SGD_Start, "_", tss$SGD_End)
+tss$combined_coordinates <- gsub(" ", "", tss$combined_coordinates)
+r15_1$combined_coordinates <- paste(r15_1$V1, "_", r15_1$V2, "_", r15_1$V3)
+r15_1$combined_coordinates <- gsub(" ", "", r15_1$combined_coordinates)
+r15_2$combined_coordinates <- paste(r15_2$V1, "_", r15_2$V2, "_", r15_2$V3)
+r15_2$combined_coordinates <- gsub(" ", "", r15_2$combined_coordinates)
+r15_3$combined_coordinates <- paste(r15_3$V1, "_", r15_3$V2, "_", r15_3$V3)
+r15_3$combined_coordinates <- gsub(" ", "", r15_3$combined_coordinates)
+gene_annotation_collapsed <- aggregate(
+  . ~ V10,  # Group by V10 and retain all other columns
+  data = r15_2,
+  FUN = function(x) paste(unique(x), collapse = "; ") # Collapse while handling duplicates
+)
+```
+```{r}
+gene_annotation_collapsed <- gene_annotation_collapsed %>% select(-V11, -V12,-V13,-V14, -V16)
+#gene_annotation_collapsed$combined_coordinates <- paste(gene_annotation_collapsed$V, "_", gene_annotation_collapsed$V8, "_", #gene_annotation_collapsed$V9)
+#gene_annotation_collapsed$combined_coordinates <- gsub(" ", "", gene_annotation_collapsed$combined_coordinates)
+
+tss$combined_coordinates <- sapply(tss$Name, function(x) {
+  # Find rows in gene_annotation_collapsed where V15 matches the current Name
+  match_row <- grep(x, gene_annotation_collapsed$V10)
+  
+  if (length(match_row) > 0) {
+     #Return the 'combined_coordinates' value from the matched row(s)
+    return(gene_annotation_collapsed$combined_coordinates[match_row])
+  } else {
+    return(NA)  # No match found
+  }
+})
+
+Ysh1_1_test <- merge(Ysh1_1, tss, by = "combined_coordinates")
+```
+```{r}
+gene_annotation_collapsed <- gene_annotation_collapsed %>% select(-V11, -V12,-V13,-V14, -V16)
+#gene_annotation_collapsed$combined_coordinates <- paste(gene_annotation_collapsed$V, "_", gene_annotation_collapsed$V8, "_", #gene_annotation_collapsed$V9)
+#gene_annotation_collapsed$combined_coordinates <- gsub(" ", "", gene_annotation_collapsed$combined_coordinates)
+
+tss$combined_coordinates <- sapply(tss$Name, function(x) {
+  # Find rows in gene_annotation_collapsed where V15 matches the current Name
+  match_row <- grep(x, gene_annotation_collapsed$V10)
+  
+  if (length(match_row) > 0) {
+     #Return the 'combined_coordinates' value from the matched row(s)
+    return(gene_annotation_collapsed$combined_coordinates[match_row])
+  } else {
+    return(NA)  # No match found
+  }
+})
+
+r15_1_test <- merge(r15_1, tss, by = "combined_coordinates")
+```
+```{r}
+# Adding the classification
+Ysh1_1_test$category <- with(Ysh1_1_test, ifelse(
+  V16 == "+", 
+  ifelse(V13 > (End + 150) & V12 < (Start - 100), "intrusive_transcript",
+    ifelse(V13 > (End + 150), "3_prime_extended",
+      ifelse(V12 < (Start - 100), "5_prime_extended", "no_readthrough")
+    )
+  ),
+  # Logic for `-` strand
+  ifelse(V12 < (End - 150) & V13 > (Start + 100), "intrusive_transcript",
+    ifelse(V12 < (End - 150), "3_prime_extended",
+      ifelse(V13 > (Start + 100), "5_prime_extended", "no_readthrough")
+    )
+  )
+))
+Ysh1_1_test_icg <- Ysh1_1_test[Ysh1_1_test$Name %in% yeast_icg$V1, ]
+
+Ysh1_2_test <- merge(Ysh1_2, tss, by = "combined_coordinates")
+
+# Adding the classification
+Ysh1_2_test$category <- with(Ysh1_2_test, ifelse(
+  V16 == "+", 
+  ifelse(V13 > (End + 150) & V12 < (Start - 100), "intrusive_transcript",
+    ifelse(V13 > (End + 150), "3_prime_extended",
+      ifelse(V12 < (Start - 100), "5_prime_extended", "no_readthrough")
+    )
+  ),
+  # Logic for `-` strand
+  ifelse(V12 < (End - 150) & V13 > (Start + 100), "intrusive_transcript",
+    ifelse(V12 < (End - 150), "3_prime_extended",
+      ifelse(V13 > (Start + 100), "5_prime_extended", "no_readthrough")
+    )
+  )
+))
+Ysh1_2_test_icg <- Ysh1_2_test[Ysh1_2_test$Name %in% yeast_icg$V1, ]
+
+Ysh1_3_test <- merge(Ysh1_3, tss, by = "combined_coordinates")
+
+# Adding the classification
+Ysh1_3_test$category <- with(Ysh1_3_test, ifelse(
+  V16 == "+", 
+  ifelse(V13 > (End + 150) & V12 < (Start - 100), "intrusive_transcript",
+    ifelse(V13 > (End + 150), "3_prime_extended",
+      ifelse(V12 < (Start - 100), "5_prime_extended", "no_readthrough")
+    )
+  ),
+  # Logic for `-` strand
+  ifelse(V12 < (End - 150) & V13 > (Start + 100), "intrusive_transcript",
+    ifelse(V12 < (End - 150), "3_prime_extended",
+      ifelse(V13 > (Start + 100), "5_prime_extended", "no_readthrough")
+    )
+  )
+))
+Ysh1_3_test_icg <- Ysh1_3_test[Ysh1_3_test$Name %in% yeast_icg$V1, ]
+
+ysh1_3_icg_3prime <- subset(Ysh1_3_test_icg, Ysh1_3_test_icg$category== "3_prime_extended")
+ysh1_3_icg_5prime <- subset(Ysh1_3_test_icg, Ysh1_3_test_icg$category== "5_prime_extended")
+ysh1_3_icg_no_readthrough <- subset(Ysh1_3_test_icg, Ysh1_3_test_icg$category== "no_readthrough")
+
+ysh1_2_icg_3prime <- subset(Ysh1_2_test_icg, Ysh1_2_test_icg$category== "3_prime_extended")
+ysh1_2_icg_5prime <- subset(Ysh1_2_test_icg, Ysh1_2_test_icg$category== "5_prime_extended")
+ysh1_2_icg_no_readthrough <- subset(Ysh1_2_test_icg, Ysh1_2_test_icg$category== "no_readthrough")
+
+ysh1_1_icg_3prime <- subset(Ysh1_1_test_icg, Ysh1_1_test_icg$category== "3_prime_extended")
+ysh1_1_icg_5prime <- subset(Ysh1_1_test_icg, Ysh1_1_test_icg$category== "5_prime_extended")
+ysh1_1_icg_no_readthrough <- subset(Ysh1_1_test_icg, Ysh1_1_test_icg$category== "no_readthrough")
+
+
+write.csv(ysh1_1_icg_no_readthrough, file = "/home/guillom/alignments/keaton_ysh1/ysh1_1_icg_no_readthrough.csv")
+write.csv(ysh1_2_icg_no_readthrough, file = "/home/guillom/alignments/keaton_ysh1/ysh1_2_icg_no_readthrough.csv")
+write.csv(ysh1_3_icg_no_readthrough, file = "/home/guillom/alignments/keaton_ysh1/ysh1_3_icg_no_readthrough.csv")
+write.csv(ysh1_1_icg_5prime, file = "/home/guillom/alignments/keaton_ysh1/ysh1_1_icg_5prime.csv")
+write.csv(ysh1_2_icg_5prime, file = "/home/guillom/alignments/keaton_ysh1/ysh1_2_icg_5prime.csv")
+write.csv(ysh1_3_icg_5prime, file = "/home/guillom/alignments/keaton_ysh1/ysh1_3_icg_5prime.csv")
+write.csv(ysh1_1_icg_3prime, file = "/home/guillom/alignments/keaton_ysh1/ysh1_1_icg_3prime.csv")
+write.csv(ysh1_2_icg_3prime, file = "/home/guillom/alignments/keaton_ysh1/ysh1_2_icg_3prime.csv")
+write.csv(ysh1_3_icg_3prime, file = "/home/guillom/alignments/keaton_ysh1/ysh1_3_icg_3prime.csv")
+```
+```{r}
+# Adding the classification
+r15_1_test$category <- with(r15_1_test, ifelse(
+  V16 == "+", 
+  ifelse(V13 > (End + 150) & V12 < (Start - 100), "intrusive_transcript",
+    ifelse(V13 > (End + 150), "3_prime_extended",
+      ifelse(V12 < (Start - 100), "5_prime_extended", "no_readthrough")
+    )
+  ),
+  # Logic for `-` strand
+  ifelse(V12 < (End - 150) & V13 > (Start + 100), "intrusive_transcript",
+    ifelse(V12 < (End - 150), "3_prime_extended",
+      ifelse(V13 > (Start + 100), "5_prime_extended", "no_readthrough")
+    )
+  )
+))
+r15_1_test_icg <- r15_1_test[r15_1_test$Name %in% yeast_icg$V1, ]
+
+r15_2_test <- merge(r15_2, tss, by = "combined_coordinates")
+
+# Adding the classification
+r15_2_test$category <- with(r15_2_test, ifelse(
+  V16 == "+", 
+  ifelse(V13 > (End + 150) & V12 < (Start - 100), "intrusive_transcript",
+    ifelse(V13 > (End + 150), "3_prime_extended",
+      ifelse(V12 < (Start - 100), "5_prime_extended", "no_readthrough")
+    )
+  ),
+  # Logic for `-` strand
+  ifelse(V12 < (End - 150) & V13 > (Start + 100), "intrusive_transcript",
+    ifelse(V12 < (End - 150), "3_prime_extended",
+      ifelse(V13 > (Start + 100), "5_prime_extended", "no_readthrough")
+    )
+  )
+))
+r15_2_test_icg <- r15_2_test[r15_2_test$Name %in% yeast_icg$V1, ]
+
+r15_3_test <- merge(r15_3, tss, by = "combined_coordinates")
+
+# Adding the classification
+r15_3_test$category <- with(r15_3_test, ifelse(
+  V16 == "+", 
+  ifelse(V13 > (End + 150) & V12 < (Start - 100), "intrusive_transcript",
+    ifelse(V13 > (End + 150), "3_prime_extended",
+      ifelse(V12 < (Start - 100), "5_prime_extended", "no_readthrough")
+    )
+  ),
+  # Logic for `-` strand
+  ifelse(V12 < (End - 150) & V13 > (Start + 100), "intrusive_transcript",
+    ifelse(V12 < (End - 150), "3_prime_extended",
+      ifelse(V13 > (Start + 100), "5_prime_extended", "no_readthrough")
+    )
+  )
+))
+r15_3_test_icg <- r15_3_test[r15_3_test$Name %in% yeast_icg$V1, ]
+
+r15_3_icg_3prime <- subset(r15_3_test_icg, r15_3_test_icg$category== "3_prime_extended")
+r15_3_icg_5prime <- subset(r15_3_test_icg, r15_3_test_icg$category== "5_prime_extended")
+r15_3_icg_no_readthrough <- subset(r15_3_test_icg, r15_3_test_icg$category== "no_readthrough")
+
+r15_2_icg_3prime <- subset(r15_2_test_icg, r15_2_test_icg$category== "3_prime_extended")
+r15_2_icg_5prime <- subset(r15_2_test_icg, r15_2_test_icg$category== "5_prime_extended")
+r15_2_icg_no_readthrough <- subset(r15_2_test_icg, r15_2_test_icg$category== "no_readthrough")
+
+r15_1_icg_3prime <- subset(r15_1_test_icg, r15_1_test_icg$category== "3_prime_extended")
+r15_1_icg_5prime <- subset(r15_1_test_icg, r15_1_test_icg$category== "5_prime_extended")
+r15_1_icg_no_readthrough <- subset(r15_1_test_icg, r15_1_test_icg$category== "no_readthrough")
+
+
+write.csv(r15_1_icg_no_readthrough, file = "/home/guillom/alignments/keaton_ysh1/r15_1_icg_no_readthrough.csv")
+write.csv(r15_2_icg_no_readthrough, file = "/home/guillom/alignments/keaton_ysh1/r15_2_icg_no_readthrough.csv")
+write.csv(r15_3_icg_no_readthrough, file = "/home/guillom/alignments/keaton_ysh1/r15_3_icg_no_readthrough.csv")
+write.csv(r15_1_icg_5prime, file = "/home/guillom/alignments/keaton_ysh1/r15_1_icg_5prime.csv")
+write.csv(r15_2_icg_5prime, file = "/home/guillom/alignments/keaton_ysh1/r15_2_icg_5prime.csv")
+write.csv(r15_3_icg_5prime, file = "/home/guillom/alignments/keaton_ysh1/r15_3_icg_5prime.csv")
+write.csv(r15_1_icg_3prime, file = "/home/guillom/alignments/keaton_ysh1/r15_1_icg_3prime.csv")
+write.csv(r15_2_icg_3prime, file = "/home/guillom/alignments/keaton_ysh1/r15_2_icg_3prime.csv")
+write.csv(r15_3_icg_3prime, file = "/home/guillom/alignments/keaton_ysh1/r15_3_icg_3prime.csv")
+```
+```{r}
+bam_files <- c("/home/guillom/alignments/keaton_ysh1/ysh1_1_icg_no_readthrough.bam", "/home/guillom/alignments/keaton_ysh1/ysh1_2_icg_no_readthrough.bam", "/home/guillom/alignments/keaton_ysh1/ysh1_3_icg_no_readthrough.bam", "/home/guillom/alignments/keaton_ysh1/ysh1_1_icg_5prime.bam", "/home/guillom/alignments/keaton_ysh1/ysh1_2_icg_5prime.bam", "/home/guillom/alignments/keaton_ysh1/ysh1_3_icg_5prime.bam")
+
+# Generate the count matrix using featureCounts
+fc_results_ysh1 <- featureCounts(bam_files, annot.ext="/home/guillom/Downloads/S288C_reference_genome_R64-5-1_20240529/saccharomyces_cerevisiae.20240529.gff", isGTFAnnotationFile=TRUE, 
+                            GTF.featureType="intron", GTF.attrType="Name", strandSpecific=1, isLongRead=TRUE, countMultiMappingReads=FALSE, minOverlap=6,
+                            useMetaFeatures=TRUE, nthreads=8)
+counts_ysh1 <- fc_results_ysh1$counts
+
+fc_results_whole_transcriptome_ysh1 <- featureCounts(bam_files, annot.ext="/home/guillom/Downloads/S288C_reference_genome_R64-5-1_20240529/saccharomyces_cerevisiae.20240529.gff", isGTFAnnotationFile=TRUE, 
+                            GTF.featureType="gene", GTF.attrType="Name", isLongRead=TRUE, countMultiMappingReads=FALSE, allowMultiOverlap=TRUE,strandSpecific=1, minOverlap=6,
+                            useMetaFeatures=FALSE, nthreads=8)
+counts_whole_transcriptome_ysh1 <- fc_results_whole_transcriptome_ysh1$counts
+```
+```{r}
+bam_files <- c("/home/guillom/alignments/keaton_ysh1/r15_1_icg_no_readthrough.bam", "/home/guillom/alignments/keaton_ysh1/r15_2_icg_no_readthrough.bam", "/home/guillom/alignments/keaton_ysh1/r15_3_icg_no_readthrough.bam", "/home/guillom/alignments/keaton_ysh1/r15_1_icg_5prime.bam", "/home/guillom/alignments/keaton_ysh1/r15_2_icg_5prime.bam", "/home/guillom/alignments/keaton_ysh1/r15_3_icg_5prime.bam")
+
+# Generate the count matrix using featureCounts
+fc_results_r15 <- featureCounts(bam_files, annot.ext="/home/guillom/Downloads/S288C_reference_genome_R64-5-1_20240529/saccharomyces_cerevisiae.20240529.gff", isGTFAnnotationFile=TRUE, 
+                            GTF.featureType="intron", GTF.attrType="Name", strandSpecific=1, isLongRead=TRUE, countMultiMappingReads=FALSE, minOverlap=6,
+                            useMetaFeatures=TRUE, nthreads=8)
+counts_r15 <- fc_results_r15$counts
+
+fc_results_whole_transcriptome_r15 <- featureCounts(bam_files, annot.ext="/home/guillom/Downloads/S288C_reference_genome_R64-5-1_20240529/saccharomyces_cerevisiae.20240529.gff", isGTFAnnotationFile=TRUE, 
+                            GTF.featureType="gene", GTF.attrType="Name", isLongRead=TRUE, countMultiMappingReads=FALSE, allowMultiOverlap=TRUE,strandSpecific=1, minOverlap=6,
+                            useMetaFeatures=FALSE, nthreads=8)
+counts_whole_transcriptome_r15 <- fc_results_whole_transcriptome_r15$counts
+```
+```{r}
+# Ensure row names in both dataframes are consistent
+rownames(counts_ysh1) <- gsub("_intron", "", rownames(counts_ysh1))
+
+# Find matching row names
+matching_rows <- intersect(rownames(counts_ysh1), rownames(counts_whole_transcriptome_ysh1))
+
+# Perform division for each matching row
+normalized_splicing_ysh1 <- counts_ysh1[matching_rows, ] / counts_whole_transcriptome_ysh1[matching_rows, ]
+
+normalized_splicing_ysh1 <- cbind(rowname = rownames(normalized_splicing_ysh1), as.data.frame(normalized_splicing_ysh1))
+write.csv(normalized_splicing_ysh1, file = '/home/guillom/alignments/keaton_ysh1/5_prime_extended_splicing.csv')
+```
+```{r}
+# Ensure row names in both dataframes are consistent
+rownames(counts_r15) <- gsub("_intron", "", rownames(counts_r15))
+
+# Find matching row names
+matching_rows <- intersect(rownames(counts_r15), rownames(counts_whole_transcriptome_r15))
+
+# Perform division for each matching row
+normalized_splicing_r15 <- counts_r15[matching_rows, ] / counts_whole_transcriptome_r15[matching_rows, ]
+
+normalized_splicing_r15 <- cbind(rowname = rownames(normalized_splicing_r15), as.data.frame(normalized_splicing_r15))
+write.csv(normalized_splicing_r15, file = '/home/guillom/alignments/keaton_ysh1/r15_5_prime_extended_splicing.csv')
+```
+```{r}
+ysh1_1_icg_5prime <- read.csv("/home/guillom/alignments/keaton_ysh1/ysh1_1_icg_5prime.csv")
+ysh1_2_icg_5prime <- read.csv("/home/guillom/alignments/keaton_ysh1/ysh1_2_icg_5prime.csv")
+ysh1_3_icg_5prime <- read.csv("/home/guillom/alignments/keaton_ysh1/ysh1_3_icg_5prime.csv")
+
+ysh1_1_icg_5prime <- ysh1_1_icg_5prime %>%
+ mutate(utr5_length = ifelse(V16 == "-", V13 - Start, 
+ ifelse(V16 == "+", Start - V12, NA)))
+ysh1_2_icg_5prime <- ysh1_2_icg_5prime %>%
+ mutate(utr5_length = ifelse(V16 == "-", V13 - Start, 
+ ifelse(V16 == "+", Start - V12, NA)))
+ysh1_3_icg_5prime <- ysh1_3_icg_5prime %>%
+ mutate(utr5_length = ifelse(V16 == "-", V13 - Start, 
+ ifelse(V16 == "+", Start - V12, NA)))
+library(dplyr)
+library(dplyr)
+library(tidyr)
+library(ggplot2)
+library(plotly)
+
+# Read the CSV
+normalized_splicing_ysh1 <- read.csv('/home/guillom/alignments/keaton_ysh1/5_prime_extended_splicing.csv')
+
+long_df <- pivot_longer(
+  normalized_splicing_ysh1, 
+  cols = starts_with("icg_no_readthrough_ysh1") | starts_with("icg_5prime_ysh1"), 
+  names_to = c("condition", "replicate"), 
+  names_pattern = "(icg_.*_ysh1)_(.*)",  # Corrected pattern
+  values_to = "splicing_efficiency"
+)
+
+# Convert condition explicitly
+long_df$condition <- case_when(
+  grepl("icg_no_readthrough_ysh1", long_df$condition) ~ "icg_no_readthrough_ysh1",
+  grepl("icg_5prime_ysh1", long_df$condition) ~ "icg_5prime_ysh1",
+  grepl("icg_3prime_ysh1", long_df$condition) ~ "icg_3prime_ysh1",
+  grepl("icg_no_readthrough_r15", long_df$condition) ~ "icg_no_readthrough_r15",
+  grepl("icg_5prime_r15", long_df$condition) ~ "icg_5prime_r15",
+  grepl("icg_3prime_r15", long_df$condition) ~ "icg_3prime_r15",
+)
+
+# Subset the data to include only `wt` and `ysh1` conditions
+long_df <- long_df %>%
+  filter(condition %in% c("icg_no_readthrough_ysh1", "icg_5prime_ysh1"))
+
+# Perform t-tests
+t_test_results <- long_df %>%
+  group_by(rowname) %>%
+  filter(n_distinct(condition) == 2) %>%  # Ensure exactly 2 levels in `condition`
+  summarise(
+    p_value = tryCatch(
+      t.test(splicing_efficiency ~ condition)$p.value,  # Attempt t-test
+      error = function(e) NA  # Assign NA if t-test fails
+    )
+  )
+
+# Adjust p-values for multiple testing
+t_test_results$p_adj <- p.adjust(t_test_results$p_value, method = "BH")
+
+# Compute log2 fold changes
+log2_fold_changes <- long_df %>%
+  group_by(rowname, condition) %>%
+  summarise(mean_splicing = mean(splicing_efficiency, na.rm = TRUE)) %>%
+  spread(condition, mean_splicing) %>%
+  mutate(log2FoldChange = log2(icg_5prime_ysh1 / icg_no_readthrough_ysh1))
+
+# Merge results
+volcano_data_ysh1_5prime <- merge(t_test_results, log2_fold_changes, by = "rowname")
+
+# Define significance
+volcano_data_ysh1_5prime$significant <- ifelse(volcano_data_ysh1_5prime$p_adj < 0.05, "Significant", "Not Significant")
+
+# Volcano plot with interactive tooltips
+p <- ggplot(volcano_data_ysh1_5prime, aes(x = log2FoldChange, y = -log10(p_adj), color = significant, text = rowname)) +
+  geom_point() +
+  scale_color_manual(values = c("Significant" = "red", "Not Significant" = "grey")) +
+  theme_minimal() +
+  labs(x = "Log2 Fold Change", y = "-Log10(p-value)", title = "5 prime extension splicing") +
+  theme(legend.title = element_blank())
+
+# Make plot interactive
+ggplotly(p, tooltip = "text")
+
+volcano_data_ysh1_5prime_sig_up <- subset(volcano_data_ysh1_5prime, volcano_data_ysh1_5prime$p_adj < 0.05 & volcano_data_ysh1_5prime$log2FoldChange > 0)
+
+volcano_data_ysh1_5prime_not_sig_up <- subset(volcano_data_ysh1_5prime, volcano_data_ysh1_5prime$p_adj > 0.05 & volcano_data_ysh1_5prime$log2FoldChange > 0)
+
+ysh1_1_icg_5prime_sig <- ysh1_1_icg_5prime %>%
+ semi_join(volcano_data_ysh1_5prime_sig_up, by = c("Name" = "rowname"))
+
+ysh1_1_icg_5prime_not_sig <- ysh1_1_icg_5prime %>%
+ semi_join(volcano_data_ysh1_5prime_not_sig_up, by = c("Name" = "rowname"))
+
+#ysh1_1_icg_5prime_sig <- ysh1_1_icg_5prime_sig %>%
+ #mutate(utr5_length = ifelse(V6 == "-", V3 - Start, 
+ #ifelse(V6 == "+", Start - V2, NA)))
+#ysh1_1_icg_5prime_sig_up <- subset(ysh1_1_icg_5prime_sig, ysh1_1_icg_5prime_sig$utr3_length >0)
+
+#ysh1_1_icg_5prime_not_sig <- ysh1_1_icg_5prime_not_sig %>%
+ #mutate(utr5_length = ifelse(V6 == "-", V3 - Start, 
+ #ifelse(V6 == "+", Start - V2, NA)))
+
+#ysh1_1_icg_5prime_not_sig_up <- subset(ysh1_1_icg_5prime_not_sig, ysh1_1_icg_5prime_not_sig$utr3_length >0)
+
+ysh1_2_icg_5prime_sig <- ysh1_2_icg_5prime %>%
+ semi_join(volcano_data_ysh1_5prime_sig_up, by = c("Name" = "rowname"))
+
+ysh1_2_icg_5prime_not_sig <- ysh1_2_icg_5prime %>%
+ semi_join(volcano_data_ysh1_5prime_not_sig_up, by = c("Name" = "rowname"))
+
+#ysh1_2_icg_5prime_sig <- ysh1_2_icg_5prime_sig %>%
+ #mutate(utr5_length = ifelse(V6 == "-", V3 - Start, 
+ #ifelse(V6 == "+", Start - V2, NA)))
+#ysh1_2_icg_5prime_sig_up <- subset(ysh1_2_icg_5prime_sig, ysh1_2_icg_5prime_sig$utr3_length >0)
+
+#ysh1_2_icg_5prime_not_sig <- ysh1_2_icg_5prime_not_sig %>%
+ #mutate(utr5_length = ifelse(V6 == "-", V3 - Start, 
+ #ifelse(V6 == "+", Start - V2, NA)))
+
+#ysh1_2_icg_5prime_not_sig_up <- subset(ysh1_2_icg_5prime_not_sig, ysh1_2_icg_5prime_not_sig$utr3_length >0)
+ysh1_3_icg_5prime_sig <- ysh1_3_icg_5prime %>%
+ semi_join(volcano_data_ysh1_5prime_sig_up, by = c("Name" = "rowname"))
+
+ysh1_3_icg_5prime_not_sig <- ysh1_3_icg_5prime %>%
+ semi_join(volcano_data_ysh1_5prime_not_sig_up, by = c("Name" = "rowname"))
+
+#ysh1_3_icg_5prime_sig <- ysh1_3_icg_5prime_sig %>%
+ #mutate(utr5_length = ifelse(V6 == "-", V3 - Start, 
+ #ifelse(V6 == "+", Start - V2, NA)))
+#ysh1_3_icg_5prime_sig_up <- subset(ysh1_3_icg_5prime_sig, ysh1_3_icg_5prime_sig$utr3_length >0)
+
+#ysh1_3_icg_5prime_not_sig <- ysh1_3_icg_5prime_not_sig %>%
+ #mutate(utr5_length = ifelse(V6 == "-", V3 - Start, 
+ #ifelse(V6 == "+", Start - V2, NA)))
+
+#ysh1_3_icg_5prime_not_sig_up <- subset(ysh1_3_icg_5prime_not_sig, ysh1_3_icg_5prime_not_sig$utr3_length >0)
+
+median(ysh1_3_icg_5prime_not_sig$utr5_length)
+median(ysh1_2_icg_5prime_not_sig$utr5_length)
+median(ysh1_1_icg_5prime_not_sig$utr5_length)
+median(ysh1_3_icg_5prime_sig$utr5_length)
+median(ysh1_2_icg_5prime_sig$utr5_length)
+median(ysh1_1_icg_5prime_sig$utr5_length)
+
+mean(ysh1_3_icg_5prime_not_sig$utr5_length)
+mean(ysh1_2_icg_5prime_not_sig$utr5_length)
+mean(ysh1_1_icg_5prime_not_sig$utr5_length)
+mean(ysh1_3_icg_5prime_sig$utr5_length)
+mean(ysh1_2_icg_5prime_sig$utr5_length)
+mean(ysh1_1_icg_5prime_sig$utr5_length)
+```
+```{r}
+r15_1_icg_5prime <- r15_1_icg_5prime %>%
+ mutate(utr5_length = ifelse(V16 == "-", V13 - Start, 
+ ifelse(V16 == "+", Start - V12, NA)))
+r15_2_icg_5prime <- r15_2_icg_5prime %>%
+ mutate(utr5_length = ifelse(V16 == "-", V13 - Start, 
+ ifelse(V16 == "+", Start - V12, NA)))
+r15_3_icg_5prime <- r15_3_icg_5prime %>%
+ mutate(utr5_length = ifelse(V16 == "-", V13 - Start, 
+ ifelse(V16 == "+", Start - V12, NA)))
+library(dplyr)
+library(dplyr)
+library(tidyr)
+library(ggplot2)
+library(plotly)
+
+# Read the CSV
+normalized_splicing_r15 <- read.csv('/home/guillom/alignments/keaton_ysh1/r15_5_prime_extended_splicing.csv')
+
+long_df <- pivot_longer(
+  normalized_splicing_r15, 
+  cols = starts_with("icg_no_readthrough_r15") | starts_with("icg_5prime_r15"), 
+  names_to = c("condition", "replicate"), 
+  names_pattern = "(icg_.*_r15)_(.*)",  # Corrected pattern
+  values_to = "splicing_efficiency"
+)
+
+# Convert condition explicitly
+long_df$condition <- case_when(
+  grepl("icg_no_readthrough_r15", long_df$condition) ~ "icg_no_readthrough_r15",
+  grepl("icg_5prime_r15", long_df$condition) ~ "icg_5prime_r15"
+)
+
+long_df <- long_df %>%
+  filter(condition %in% c("icg_no_readthrough_r15", "icg_5prime_r15"))
+
+# Perform t-tests
+t_test_results <- long_df %>%
+  group_by(rowname) %>%
+  filter(n_distinct(condition) == 2) %>%  # Ensure exactly 2 levels in `condition`
+  summarise(
+    p_value = tryCatch(
+      t.test(splicing_efficiency ~ condition)$p.value,  # Attempt t-test
+      error = function(e) NA  # Assign NA if t-test fails
+    )
+  )
+
+# Adjust p-values for multiple testing
+t_test_results$p_adj <- p.adjust(t_test_results$p_value, method = "BH")
+
+# Compute log2 fold changes
+log2_fold_changes <- long_df %>%
+  group_by(rowname, condition) %>%
+  summarise(mean_splicing = mean(splicing_efficiency, na.rm = TRUE)) %>%
+  spread(condition, mean_splicing) %>%
+  mutate(log2FoldChange = log2(icg_5prime_r15 / icg_no_readthrough_r15))
+
+# Merge results
+volcano_data_r15_5prime <- merge(t_test_results, log2_fold_changes, by = "rowname")
+
+# Define significance
+volcano_data_r15_5prime$significant <- ifelse(volcano_data_r15_5prime$p_adj < 0.05, "Significant", "Not Significant")
+
+# Volcano plot with interactive tooltips
+p <- ggplot(volcano_data_r15_5prime, aes(x = log2FoldChange, y = -log10(p_adj), color = significant, text = rowname)) +
+  geom_point() +
+  scale_color_manual(values = c("Significant" = "red", "Not Significant" = "grey")) +
+  theme_minimal() +
+  labs(x = "Log2 Fold Change", y = "-Log10(p-value)", title = "5 prime extension splicing") +
+  theme(legend.title = element_blank())
+
+# Make plot interactive
+ggplotly(p, tooltip = "text")
+
+volcano_data_r15_5prime_sig_up <- subset(volcano_data_r15_5prime, volcano_data_r15_5prime$p_adj < 0.05 & volcano_data_r15_5prime$log2FoldChange > 0)
+
+volcano_data_r15_5prime_not_sig_up <- subset(volcano_data_r15_5prime, volcano_data_r15_5prime$p_adj > 0.05 & volcano_data_r15_5prime$log2FoldChange > 0)
+
+r15_1_icg_5prime_sig <- r15_1_icg_5prime %>%
+ semi_join(volcano_data_r15_5prime_sig_up, by = c("Name" = "rowname"))
+
+r15_1_icg_5prime_not_sig <- r15_1_icg_5prime %>%
+ semi_join(volcano_data_r15_5prime_not_sig_up, by = c("Name" = "rowname"))
+
+#ysh1_1_icg_5prime_sig <- ysh1_1_icg_5prime_sig %>%
+ #mutate(utr5_length = ifelse(V6 == "-", V3 - Start, 
+ #ifelse(V6 == "+", Start - V2, NA)))
+#ysh1_1_icg_5prime_sig_up <- subset(ysh1_1_icg_5prime_sig, ysh1_1_icg_5prime_sig$utr3_length >0)
+
+#ysh1_1_icg_5prime_not_sig <- ysh1_1_icg_5prime_not_sig %>%
+ #mutate(utr5_length = ifelse(V6 == "-", V3 - Start, 
+ #ifelse(V6 == "+", Start - V2, NA)))
+
+#ysh1_1_icg_5prime_not_sig_up <- subset(ysh1_1_icg_5prime_not_sig, ysh1_1_icg_5prime_not_sig$utr3_length >0)
+
+r15_2_icg_5prime_sig <- r15_2_icg_5prime %>%
+ semi_join(volcano_data_r15_5prime_sig_up, by = c("Name" = "rowname"))
+
+r15_2_icg_5prime_not_sig <- r15_2_icg_5prime %>%
+ semi_join(volcano_data_r15_5prime_not_sig_up, by = c("Name" = "rowname"))
+
+#ysh1_2_icg_5prime_sig <- ysh1_2_icg_5prime_sig %>%
+ #mutate(utr5_length = ifelse(V6 == "-", V3 - Start, 
+ #ifelse(V6 == "+", Start - V2, NA)))
+#ysh1_2_icg_5prime_sig_up <- subset(ysh1_2_icg_5prime_sig, ysh1_2_icg_5prime_sig$utr3_length >0)
+
+#ysh1_2_icg_5prime_not_sig <- ysh1_2_icg_5prime_not_sig %>%
+ #mutate(utr5_length = ifelse(V6 == "-", V3 - Start, 
+ #ifelse(V6 == "+", Start - V2, NA)))
+
+#ysh1_2_icg_5prime_not_sig_up <- subset(ysh1_2_icg_5prime_not_sig, ysh1_2_icg_5prime_not_sig$utr3_length >0)
+r15_3_icg_5prime_sig <- r15_3_icg_5prime %>%
+ semi_join(volcano_data_r15_5prime_sig_up, by = c("Name" = "rowname"))
+
+r15_3_icg_5prime_not_sig <- r15_3_icg_5prime %>%
+ semi_join(volcano_data_r15_5prime_not_sig_up, by = c("Name" = "rowname"))
+
+#ysh1_3_icg_5prime_sig <- ysh1_3_icg_5prime_sig %>%
+ #mutate(utr5_length = ifelse(V6 == "-", V3 - Start, 
+ #ifelse(V6 == "+", Start - V2, NA)))
+#ysh1_3_icg_5prime_sig_up <- subset(ysh1_3_icg_5prime_sig, ysh1_3_icg_5prime_sig$utr3_length >0)
+
+#ysh1_3_icg_5prime_not_sig <- ysh1_3_icg_5prime_not_sig %>%
+ #mutate(utr5_length = ifelse(V6 == "-", V3 - Start, 
+ #ifelse(V6 == "+", Start - V2, NA)))
+
+#ysh1_3_icg_5prime_not_sig_up <- subset(ysh1_3_icg_5prime_not_sig, ysh1_3_icg_5prime_not_sig$utr3_length >0)
+
+median(r15_3_icg_5prime_not_sig$utr5_length)
+median(r15_2_icg_5prime_not_sig$utr5_length)
+median(r15_1_icg_5prime_not_sig$utr5_length)
+median(r15_3_icg_5prime_sig$utr5_length)
+median(r15_2_icg_5prime_sig$utr5_length)
+median(r15_1_icg_5prime_sig$utr5_length)
+
+mean(r15_3_icg_5prime_not_sig$utr5_length)
+mean(r15_2_icg_5prime_not_sig$utr5_length)
+mean(r15_1_icg_5prime_not_sig$utr5_length)
+mean(r15_3_icg_5prime_sig$utr5_length)
+mean(r15_2_icg_5prime_sig$utr5_length)
+mean(r15_1_icg_5prime_sig$utr5_length)
+```
+```{r}
+#example of bin sizes for Extensions  <300, 300-800, 800-1200, 1200-2000, 2000+
+ysh1_1_icg_5prime_300 <- subset(ysh1_1_icg_5prime, ysh1_1_icg_5prime$utr5_length < 300)
+ysh1_1_icg_5prime_800 <- subset(ysh1_1_icg_5prime, ysh1_1_icg_5prime$utr5_length >= 300 & ysh1_1_icg_5prime$utr5_length < 800)
+ysh1_1_icg_5prime_1200 <- subset(ysh1_1_icg_5prime, ysh1_1_icg_5prime$utr5_length >= 800 & ysh1_1_icg_5prime$utr5_length < 1200)
+ysh1_1_icg_5prime_2000 <- subset(ysh1_1_icg_5prime, ysh1_1_icg_5prime$utr5_length >= 1200 & ysh1_1_icg_5prime$utr5_length < 2000)
+ysh1_1_icg_5prime_2000_plus <- subset(ysh1_1_icg_5prime, ysh1_1_icg_5prime$utr5_length >= 2000)
+
+ysh1_2_icg_5prime_300 <- subset(ysh1_2_icg_5prime, ysh1_2_icg_5prime$utr5_length < 300)
+ysh1_2_icg_5prime_800 <- subset(ysh1_2_icg_5prime, ysh1_2_icg_5prime$utr5_length >= 300 & ysh1_2_icg_5prime$utr5_length < 800)
+ysh1_2_icg_5prime_1200 <- subset(ysh1_2_icg_5prime, ysh1_2_icg_5prime$utr5_length >= 800 & ysh1_2_icg_5prime$utr5_length < 1200)
+ysh1_2_icg_5prime_2000 <- subset(ysh1_2_icg_5prime, ysh1_2_icg_5prime$utr5_length >= 1200 & ysh1_2_icg_5prime$utr5_length < 2000)
+ysh1_2_icg_5prime_2000_plus <- subset(ysh1_2_icg_5prime, ysh1_2_icg_5prime$utr5_length >= 2000)
+
+ysh1_3_icg_5prime_300 <- subset(ysh1_3_icg_5prime, ysh1_3_icg_5prime$utr5_length < 300)
+ysh1_3_icg_5prime_800 <- subset(ysh1_3_icg_5prime, ysh1_3_icg_5prime$utr5_length >= 300 & ysh1_3_icg_5prime$utr5_length < 800)
+ysh1_3_icg_5prime_1200 <- subset(ysh1_3_icg_5prime, ysh1_3_icg_5prime$utr5_length >= 800 & ysh1_3_icg_5prime$utr5_length < 1200)
+ysh1_3_icg_5prime_2000 <- subset(ysh1_3_icg_5prime, ysh1_3_icg_5prime$utr5_length >= 1200 & ysh1_3_icg_5prime$utr5_length < 2000)
+ysh1_3_icg_5prime_2000_plus <- subset(ysh1_3_icg_5prime, ysh1_3_icg_5prime$utr5_length >= 2000)
+```
+```{r}
+#example of bin sizes for Extensions  <300, 300-800, 800-1200, 1200-2000, 2000+
+r15_1_icg_5prime_300 <- subset(r15_1_icg_5prime, r15_1_icg_5prime$utr5_length < 300)
+r15_1_icg_5prime_800 <- subset(r15_1_icg_5prime, r15_1_icg_5prime$utr5_length >= 300 & r15_1_icg_5prime$utr5_length < 800)
+r15_1_icg_5prime_1200 <- subset(r15_1_icg_5prime, r15_1_icg_5prime$utr5_length >= 800 & r15_1_icg_5prime$utr5_length < 1200)
+r15_1_icg_5prime_2000 <- subset(r15_1_icg_5prime, r15_1_icg_5prime$utr5_length >= 1200 & r15_1_icg_5prime$utr5_length < 2000)
+r15_1_icg_5prime_2000_plus <- subset(r15_1_icg_5prime, r15_1_icg_5prime$utr5_length >= 2000)
+
+r15_2_icg_5prime_300 <- subset(r15_2_icg_5prime, r15_2_icg_5prime$utr5_length < 300)
+r15_2_icg_5prime_800 <- subset(r15_2_icg_5prime, r15_2_icg_5prime$utr5_length >= 300 & r15_2_icg_5prime$utr5_length < 800)
+r15_2_icg_5prime_1200 <- subset(r15_2_icg_5prime, r15_2_icg_5prime$utr5_length >= 800 & r15_2_icg_5prime$utr5_length < 1200)
+r15_2_icg_5prime_2000 <- subset(r15_2_icg_5prime, r15_2_icg_5prime$utr5_length >= 1200 & r15_2_icg_5prime$utr5_length < 2000)
+r15_2_icg_5prime_2000_plus <- subset(r15_2_icg_5prime, r15_2_icg_5prime$utr5_length >= 2000)
+
+r15_3_icg_5prime_300 <- subset(r15_3_icg_5prime, r15_3_icg_5prime$utr5_length < 300)
+r15_3_icg_5prime_800 <- subset(r15_3_icg_5prime, r15_3_icg_5prime$utr5_length >= 300 & r15_3_icg_5prime$utr5_length < 800)
+r15_3_icg_5prime_1200 <- subset(r15_3_icg_5prime, r15_3_icg_5prime$utr5_length >= 800 & r15_3_icg_5prime$utr5_length < 1200)
+r15_3_icg_5prime_2000 <- subset(r15_3_icg_5prime, r15_3_icg_5prime$utr5_length >= 1200 & r15_3_icg_5prime$utr5_length < 2000)
+r15_3_icg_5prime_2000_plus <- subset(r15_3_icg_5prime, r15_3_icg_5prime$utr5_length >= 2000)
+```
+```{r}
+write.csv(ysh1_1_icg_5prime_300, file = "/home/guillom/Downloads/ysh1_1_icg_5prime_300.csv")
+write.csv(ysh1_1_icg_5prime_800, file = "/home/guillom/Downloads/ysh1_1_icg_5prime_800.csv")
+write.csv(ysh1_1_icg_5prime_1200, file = "/home/guillom/Downloads/ysh1_1_icg_5prime_1200.csv")
+write.csv(ysh1_1_icg_5prime_2000, file = "/home/guillom/Downloads/ysh1_1_icg_5prime_2000.csv")
+write.csv(ysh1_1_icg_5prime_2000_plus, file = "/home/guillom/Downloads/ysh1_1_icg_5prime_2000_plus.csv")
+write.csv(ysh1_2_icg_5prime_300, file = "/home/guillom/Downloads/ysh1_2_icg_5prime_300.csv")
+write.csv(ysh1_2_icg_5prime_800, file = "/home/guillom/Downloads/ysh1_2_icg_5prime_800.csv")
+write.csv(ysh1_2_icg_5prime_1200, file = "/home/guillom/Downloads/ysh1_2_icg_5prime_1200.csv")
+write.csv(ysh1_2_icg_5prime_2000, file = "/home/guillom/Downloads/ysh1_2_icg_5prime_2000.csv")
+write.csv(ysh1_2_icg_5prime_2000_plus, file = "/home/guillom/Downloads/ysh1_2_icg_5prime_2000_plus.csv")
+write.csv(ysh1_3_icg_5prime_300, file = "/home/guillom/Downloads/ysh1_3_icg_5prime_300.csv")
+write.csv(ysh1_3_icg_5prime_800, file = "/home/guillom/Downloads/ysh1_3_icg_5prime_800.csv")
+write.csv(ysh1_3_icg_5prime_1200, file = "/home/guillom/Downloads/ysh1_3_icg_5prime_1200.csv")
+write.csv(ysh1_3_icg_5prime_2000, file = "/home/guillom/Downloads/ysh1_3_icg_5prime_2000.csv")
+write.csv(ysh1_3_icg_5prime_2000_plus, file = "/home/guillom/Downloads/ysh1_3_icg_5prime_2000_plus.csv")
+```
+```{r}
+write.csv(r15_1_icg_5prime_300, file = "/home/guillom/Downloads/r15_1_icg_5prime_300.csv")
+write.csv(r15_1_icg_5prime_800, file = "/home/guillom/Downloads/r15_1_icg_5prime_800.csv")
+write.csv(r15_1_icg_5prime_1200, file = "/home/guillom/Downloads/r15_1_icg_5prime_1200.csv")
+write.csv(r15_1_icg_5prime_2000, file = "/home/guillom/Downloads/r15_1_icg_5prime_2000.csv")
+write.csv(r15_1_icg_5prime_2000_plus, file = "/home/guillom/Downloads/r15_1_icg_5prime_2000_plus.csv")
+write.csv(r15_2_icg_5prime_300, file = "/home/guillom/Downloads/r15_2_icg_5prime_300.csv")
+write.csv(r15_2_icg_5prime_800, file = "/home/guillom/Downloads/r15_2_icg_5prime_800.csv")
+write.csv(r15_2_icg_5prime_1200, file = "/home/guillom/Downloads/r15_2_icg_5prime_1200.csv")
+write.csv(r15_2_icg_5prime_2000, file = "/home/guillom/Downloads/r15_2_icg_5prime_2000.csv")
+write.csv(r15_2_icg_5prime_2000_plus, file = "/home/guillom/Downloads/r15_2_icg_5prime_2000_plus.csv")
+write.csv(r15_3_icg_5prime_300, file = "/home/guillom/Downloads/r15_3_icg_5prime_300.csv")
+write.csv(r15_3_icg_5prime_800, file = "/home/guillom/Downloads/r15_3_icg_5prime_800.csv")
+write.csv(r15_3_icg_5prime_1200, file = "/home/guillom/Downloads/r15_3_icg_5prime_1200.csv")
+write.csv(r15_3_icg_5prime_2000, file = "/home/guillom/Downloads/r15_3_icg_5prime_2000.csv")
+write.csv(r15_3_icg_5prime_2000_plus, file = "/home/guillom/Downloads/r15_3_icg_5prime_2000_plus.csv")
+```
+```{r}
+#example of bin sizes for Extensions  <300, 300-800, 800-1200, 1200-2000, 2000+
+ysh1_1_icg_5prime_500 <- subset(ysh1_1_icg_5prime, ysh1_1_icg_5prime$utr5_length >= 300 & ysh1_1_icg_5prime$utr5_length < 500)
+ysh1_1_icg_5prime_700 <- subset(ysh1_1_icg_5prime, ysh1_1_icg_5prime$utr5_length >= 500 & ysh1_1_icg_5prime$utr5_length < 700)
+ysh1_1_icg_5prime_900 <- subset(ysh1_1_icg_5prime, ysh1_1_icg_5prime$utr5_length >= 700 & ysh1_1_icg_5prime$utr5_length < 900)
+ysh1_1_icg_5prime_1100 <- subset(ysh1_1_icg_5prime, ysh1_1_icg_5prime$utr5_length >= 900 & ysh1_1_icg_5prime$utr5_length < 1100)
+ysh1_1_icg_5prime_1300 <- subset(ysh1_1_icg_5prime, ysh1_1_icg_5prime$utr5_length >= 1100 & ysh1_1_icg_5prime$utr5_length < 1300)
+ysh1_1_icg_5prime_1500 <- subset(ysh1_1_icg_5prime, ysh1_1_icg_5prime$utr5_length >= 1300 & ysh1_1_icg_5prime$utr5_length < 1500)
+ysh1_1_icg_5prime_1700 <- subset(ysh1_1_icg_5prime, ysh1_1_icg_5prime$utr5_length >= 1500 & ysh1_1_icg_5prime$utr5_length < 1700)
+ysh1_1_icg_5prime_1900 <- subset(ysh1_1_icg_5prime, ysh1_1_icg_5prime$utr5_length >= 1700 & ysh1_1_icg_5prime$utr5_length < 1900)
+ysh1_1_icg_5prime_1900_2000 <- subset(ysh1_1_icg_5prime, ysh1_1_icg_5prime$utr5_length >= 1900 & ysh1_1_icg_5prime$utr5_length < 2000)
+
+ysh1_2_icg_5prime_500 <- subset(ysh1_2_icg_5prime, ysh1_2_icg_5prime$utr5_length >= 300 & ysh1_2_icg_5prime$utr5_length < 500)
+ysh1_2_icg_5prime_700 <- subset(ysh1_2_icg_5prime, ysh1_2_icg_5prime$utr5_length >= 500 & ysh1_2_icg_5prime$utr5_length < 700)
+ysh1_2_icg_5prime_900 <- subset(ysh1_2_icg_5prime, ysh1_2_icg_5prime$utr5_length >= 700 & ysh1_2_icg_5prime$utr5_length < 900)
+ysh1_2_icg_5prime_1100 <- subset(ysh1_2_icg_5prime, ysh1_2_icg_5prime$utr5_length >= 900 & ysh1_2_icg_5prime$utr5_length < 1100)
+ysh1_2_icg_5prime_1300 <- subset(ysh1_2_icg_5prime, ysh1_2_icg_5prime$utr5_length >= 1100 & ysh1_2_icg_5prime$utr5_length < 1300)
+ysh1_2_icg_5prime_1500 <- subset(ysh1_2_icg_5prime, ysh1_2_icg_5prime$utr5_length >= 1300 & ysh1_2_icg_5prime$utr5_length < 1500)
+ysh1_2_icg_5prime_1700 <- subset(ysh1_2_icg_5prime, ysh1_2_icg_5prime$utr5_length >= 1500 & ysh1_2_icg_5prime$utr5_length < 1700)
+ysh1_2_icg_5prime_1900 <- subset(ysh1_2_icg_5prime, ysh1_2_icg_5prime$utr5_length >= 1700 & ysh1_2_icg_5prime$utr5_length < 1900)
+ysh1_2_icg_5prime_1900_2000 <- subset(ysh1_2_icg_5prime, ysh1_2_icg_5prime$utr5_length >= 1900 & ysh1_2_icg_5prime$utr5_length < 2000)
+
+ysh1_3_icg_5prime_500 <- subset(ysh1_3_icg_5prime, ysh1_3_icg_5prime$utr5_length >= 300 & ysh1_3_icg_5prime$utr5_length < 500)
+ysh1_3_icg_5prime_700 <- subset(ysh1_3_icg_5prime, ysh1_3_icg_5prime$utr5_length >= 500 & ysh1_3_icg_5prime$utr5_length < 700)
+ysh1_3_icg_5prime_900 <- subset(ysh1_3_icg_5prime, ysh1_3_icg_5prime$utr5_length >= 700 & ysh1_3_icg_5prime$utr5_length < 900)
+ysh1_3_icg_5prime_1100 <- subset(ysh1_3_icg_5prime, ysh1_3_icg_5prime$utr5_length >= 900 & ysh1_3_icg_5prime$utr5_length < 1100)
+ysh1_3_icg_5prime_1300 <- subset(ysh1_3_icg_5prime, ysh1_3_icg_5prime$utr5_length >= 1100 & ysh1_3_icg_5prime$utr5_length < 1300)
+ysh1_3_icg_5prime_1500 <- subset(ysh1_3_icg_5prime, ysh1_3_icg_5prime$utr5_length >= 1300 & ysh1_3_icg_5prime$utr5_length < 1500)
+ysh1_3_icg_5prime_1700 <- subset(ysh1_3_icg_5prime, ysh1_3_icg_5prime$utr5_length >= 1500 & ysh1_3_icg_5prime$utr5_length < 1700)
+ysh1_3_icg_5prime_1900 <- subset(ysh1_3_icg_5prime, ysh1_3_icg_5prime$utr5_length >= 1700 & ysh1_3_icg_5prime$utr5_length < 1900)
+ysh1_3_icg_5prime_1900_2000 <- subset(ysh1_3_icg_5prime, ysh1_3_icg_5prime$utr5_length >= 1900 & ysh1_3_icg_5prime$utr5_length < 2000)
+
+write.csv(ysh1_1_icg_5prime_500, file = "/home/guillom/Downloads/ysh1_1_icg_5prime_500.csv")
+write.csv(ysh1_1_icg_5prime_700, file = "/home/guillom/Downloads/ysh1_1_icg_5prime_700.csv")
+write.csv(ysh1_1_icg_5prime_900, file = "/home/guillom/Downloads/ysh1_1_icg_5prime_900.csv")
+write.csv(ysh1_1_icg_5prime_1100, file = "/home/guillom/Downloads/ysh1_1_icg_5prime_1100.csv")
+write.csv(ysh1_1_icg_5prime_1300, file = "/home/guillom/Downloads/ysh1_1_icg_5prime_1300.csv")
+write.csv(ysh1_1_icg_5prime_1500, file = "/home/guillom/Downloads/ysh1_1_icg_5prime_1500.csv")
+write.csv(ysh1_1_icg_5prime_1700, file = "/home/guillom/Downloads/ysh1_1_icg_5prime_1700.csv")
+write.csv(ysh1_1_icg_5prime_1900, file = "/home/guillom/Downloads/ysh1_1_icg_5prime_1900.csv")
+write.csv(ysh1_1_icg_5prime_1900_2000, file = "/home/guillom/Downloads/ysh1_1_icg_5prime_1900_2000.csv")
+
+write.csv(ysh1_2_icg_5prime_500, file = "/home/guillom/Downloads/ysh1_2_icg_5prime_500.csv")
+write.csv(ysh1_2_icg_5prime_700, file = "/home/guillom/Downloads/ysh1_2_icg_5prime_700.csv")
+write.csv(ysh1_2_icg_5prime_900, file = "/home/guillom/Downloads/ysh1_2_icg_5prime_900.csv")
+write.csv(ysh1_2_icg_5prime_1100, file = "/home/guillom/Downloads/ysh1_2_icg_5prime_1100.csv")
+write.csv(ysh1_2_icg_5prime_1300, file = "/home/guillom/Downloads/ysh1_2_icg_5prime_1300_plus.csv")
+write.csv(ysh1_2_icg_5prime_1500, file = "/home/guillom/Downloads/ysh1_2_icg_5prime_1500.csv")
+write.csv(ysh1_2_icg_5prime_1700, file = "/home/guillom/Downloads/ysh1_2_icg_5prime_1700.csv")
+write.csv(ysh1_2_icg_5prime_1900, file = "/home/guillom/Downloads/ysh1_2_icg_5prime_1900.csv")
+write.csv(ysh1_2_icg_5prime_1900_2000, file = "/home/guillom/Downloads/ysh1_2_icg_5prime_1900_2000.csv")
+
+write.csv(ysh1_3_icg_5prime_500, file = "/home/guillom/Downloads/ysh1_3_icg_5prime_500.csv")
+write.csv(ysh1_3_icg_5prime_700, file = "/home/guillom/Downloads/ysh1_3_icg_5prime_700.csv")
+write.csv(ysh1_3_icg_5prime_900, file = "/home/guillom/Downloads/ysh1_3_icg_5prime_900.csv")
+write.csv(ysh1_3_icg_5prime_1100, file = "/home/guillom/Downloads/ysh1_3_icg_5prime_1100.csv")
+write.csv(ysh1_3_icg_5prime_1300, file = "/home/guillom/Downloads/ysh1_3_icg_5prime_1300_plus.csv")
+write.csv(ysh1_3_icg_5prime_1500, file = "/home/guillom/Downloads/ysh1_3_icg_5prime_1500.csv")
+write.csv(ysh1_3_icg_5prime_1700, file = "/home/guillom/Downloads/ysh1_3_icg_5prime_1700.csv")
+write.csv(ysh1_3_icg_5prime_1900, file = "/home/guillom/Downloads/ysh1_3_icg_5prime_1900.csv")
+write.csv(ysh1_3_icg_5prime_1900_2000, file = "/home/guillom/Downloads/ysh1_3_icg_5prime_1900_2000.csv")
+```
+```{r}
+bam_files <- c("/home/guillom/Downloads/ysh1_1_icg_5prime_300.bam","/home/guillom/Downloads/ysh1_1_icg_5prime_800.bam","/home/guillom/Downloads/ysh1_1_icg_5prime_1200.bam","/home/guillom/Downloads/ysh1_1_icg_5prime_2000.bam","/home/guillom/Downloads/ysh1_1_icg_5prime_2000_plus.bam","/home/guillom/Downloads/ysh1_2_icg_5prime_300.bam","/home/guillom/Downloads/ysh1_2_icg_5prime_800.bam","/home/guillom/Downloads/ysh1_2_icg_5prime_1200.bam","/home/guillom/Downloads/ysh1_2_icg_5prime_2000.bam","/home/guillom/Downloads/ysh1_2_icg_5prime_2000_plus.bam","/home/guillom/Downloads/ysh1_3_icg_5prime_300.bam","/home/guillom/Downloads/ysh1_3_icg_5prime_800.bam","/home/guillom/Downloads/ysh1_3_icg_5prime_1200.bam","/home/guillom/Downloads/ysh1_3_icg_5prime_2000.bam","/home/guillom/Downloads/ysh1_3_icg_5prime_2000_plus.bam")
+
+fc_results_ysh1 <- featureCounts(bam_files, annot.ext="/home/guillom/Downloads/S288C_reference_genome_R64-5-1_20240529/saccharomyces_cerevisiae.20240529.gff", isGTFAnnotationFile=TRUE, 
+                            GTF.featureType="intron", GTF.attrType="Name", strandSpecific=1, isLongRead=TRUE, countMultiMappingReads=FALSE, minOverlap=6,
+                            useMetaFeatures=TRUE, nthreads=8)
+counts_ysh1 <- fc_results_ysh1$counts
+```
+```{r}
+bam_files <- c("/home/guillom/Downloads/r15_1_icg_5prime_300.bam","/home/guillom/Downloads/r15_1_icg_5prime_800.bam","/home/guillom/Downloads/r15_1_icg_5prime_1200.bam","/home/guillom/Downloads/r15_1_icg_5prime_2000.bam","/home/guillom/Downloads/r15_1_icg_5prime_2000_plus.bam","/home/guillom/Downloads/r15_2_icg_5prime_300.bam","/home/guillom/Downloads/r15_2_icg_5prime_800.bam","/home/guillom/Downloads/r15_2_icg_5prime_1200.bam","/home/guillom/Downloads/r15_2_icg_5prime_2000.bam","/home/guillom/Downloads/r15_2_icg_5prime_2000_plus.bam","/home/guillom/Downloads/r15_3_icg_5prime_300.bam","/home/guillom/Downloads/r15_3_icg_5prime_800.bam","/home/guillom/Downloads/r15_3_icg_5prime_1200.bam","/home/guillom/Downloads/r15_3_icg_5prime_2000.bam","/home/guillom/Downloads/r15_3_icg_5prime_2000_plus.bam")
+
+fc_results_r15 <- featureCounts(bam_files, annot.ext="/home/guillom/Downloads/S288C_reference_genome_R64-5-1_20240529/saccharomyces_cerevisiae.20240529.gff", isGTFAnnotationFile=TRUE, 
+                            GTF.featureType="intron", GTF.attrType="Name", strandSpecific=1, isLongRead=TRUE, countMultiMappingReads=FALSE, minOverlap=6,
+                            useMetaFeatures=TRUE, nthreads=8)
+counts_r15 <- fc_results_r15$counts
+```
+```{r}
+bam_files <- c("/home/guillom/Downloads/ysh1_1_icg_5prime_300.bam","/home/guillom/Downloads/ysh1_1_icg_5prime_500.bam","/home/guillom/Downloads/ysh1_1_icg_5prime_700.bam","/home/guillom/Downloads/ysh1_1_icg_5prime_900.bam", "/home/guillom/Downloads/ysh1_1_icg_5prime_1100.bam","/home/guillom/Downloads/ysh1_1_icg_5prime_1300.bam", "/home/guillom/Downloads/ysh1_1_icg_5prime_1500.bam", "/home/guillom/Downloads/ysh1_1_icg_5prime_1700.bam", "/home/guillom/Downloads/ysh1_1_icg_5prime_1900.bam","/home/guillom/Downloads/ysh1_1_icg_5prime_1900_2000.bam","/home/guillom/Downloads/ysh1_1_icg_5prime_2000_plus.bam", "/home/guillom/Downloads/ysh1_2_icg_5prime_300.bam","/home/guillom/Downloads/ysh1_2_icg_5prime_500.bam","/home/guillom/Downloads/ysh1_2_icg_5prime_700.bam","/home/guillom/Downloads/ysh1_2_icg_5prime_900.bam", "/home/guillom/Downloads/ysh1_2_icg_5prime_1100.bam","/home/guillom/Downloads/ysh1_2_icg_5prime_1300.bam", "/home/guillom/Downloads/ysh1_2_icg_5prime_1500.bam", "/home/guillom/Downloads/ysh1_2_icg_5prime_1700.bam", "/home/guillom/Downloads/ysh1_2_icg_5prime_1900.bam","/home/guillom/Downloads/ysh1_2_icg_5prime_1900_2000.bam","/home/guillom/Downloads/ysh1_2_icg_5prime_2000_plus.bam", "/home/guillom/Downloads/ysh1_3_icg_5prime_300.bam","/home/guillom/Downloads/ysh1_3_icg_5prime_500.bam","/home/guillom/Downloads/ysh1_3_icg_5prime_700.bam","/home/guillom/Downloads/ysh1_3_icg_5prime_900.bam", "/home/guillom/Downloads/ysh1_3_icg_5prime_1100.bam","/home/guillom/Downloads/ysh1_3_icg_5prime_1300.bam", "/home/guillom/Downloads/ysh1_3_icg_5prime_1500.bam", "/home/guillom/Downloads/ysh1_3_icg_5prime_1700.bam", "/home/guillom/Downloads/ysh1_3_icg_5prime_1900.bam","/home/guillom/Downloads/ysh1_3_icg_5prime_1900_2000.bam","/home/guillom/Downloads/ysh1_3_icg_5prime_2000_plus.bam")
+
+fc_results_ysh1 <- featureCounts(bam_files, annot.ext="/home/guillom/Downloads/S288C_reference_genome_R64-5-1_20240529/saccharomyces_cerevisiae.20240529.gff", isGTFAnnotationFile=TRUE, 
+                            GTF.featureType="intron", GTF.attrType="Name", strandSpecific=1, isLongRead=TRUE, countMultiMappingReads=FALSE, minOverlap=6,
+                            useMetaFeatures=TRUE, nthreads=8)
+counts_ysh1 <- fc_results_ysh1$counts
+```
+```{r}
+library(Rsubread)
+library(DESeq2)
+# Set up file paths for your BAM files
+bam_files <- c("/home/guillom/alignments/keaton_ysh1/wt_1chr.sorted.bam", "/home/guillom/alignments/keaton_ysh1/wt_2chr.sorted.bam", "/home/guillom/alignments/keaton_ysh1/wt_3chr.sorted.bam","/home/guillom/alignments/keaton_ysh1/ysh1_1chr.sorted.bam", "/home/guillom/alignments/keaton_ysh1/ysh1_2chr.sorted.bam", "/home/guillom/alignments/keaton_ysh1/ysh1_3chr.sorted.bam")
+
+# Generate the count matrix using featureCounts
+fc_results <- featureCounts(bam_files, annot.ext="/home/guillom/Downloads/S288C_reference_genome_R64-5-1_20240529/saccharomyces_cerevisiae.20240529.gff", isGTFAnnotationFile=TRUE,
+                            GTF.featureType=c("gene"), GTF.attrType="Name", isLongRead=TRUE, countMultiMappingReads=FALSE, allowMultiOverlap=TRUE, minOverlap=6,
+                            useMetaFeatures=FALSE, nthreads=8)
+
+# The count matrix will be stored in fc_results$counts
+counts <- fc_results$counts
+
+sample_info <- data.frame(
+  row.names = c("wt_1chr.sorted.bam","wt_2chr.sorted.bam","wt_3chr.sorted.bam","ysh1_1chr.sorted.bam", "ysh1_2chr.sorted.bam", "ysh1_3chr.sorted.bam"),
+  condition = factor(rep(c("wt", "ysh1"), each=3))
+)
+
+# Create DESeq2 dataset
+dds <- DESeqDataSetFromMatrix(countData = counts,
+                              colData = sample_info,
+                              design = ~ condition)
+
+# Run DESeq2
+dds <- DESeq(dds)
+
+res <- results(dds, contrast = c("condition", "ysh1", "wt"))
+
+# View results
+head(res)
+
+library(ggplot2)
+
+# Convert DESeq2 results to a data frame
+res_df <- as.data.frame(res)
+
+# Add a column to label significant genes
+res_df$significant <- ifelse(res_df$padj < 0.05, "Significant", "Not Significant")
+
+# Add gene names or row names for labeling
+res_df$rowname <- rownames(res_df)
+
+# Volcano plot
+p <- ggplot(res_df, aes(x = log2FoldChange, y = -log10(padj), color = significant, text = rowname)) +
+  geom_point(alpha = 0.8) +
+  scale_color_manual(values = c("Significant" = "red", "Not Significant" = "grey")) +
+  theme_minimal() +
+  labs(x = "Log2 Fold Change", y = "-Log10 Adjusted p-value", title = "Volcano Plot") +
+  theme(legend.title = element_blank())
+
+# If you want an interactive volcano plot
+library(plotly)
+ggplotly(p, tooltip = "text")
+```
+```{r}
+library(pheatmap)
+
+# Regularized log transformation (rlog) or Variance Stabilizing Transformation (vst)
+rlog_counts <- rlog(dds, blind = TRUE)
+
+# Convert to a matrix for heatmap
+normalized_counts <- assay(rlog_counts)
+
+# Select top 50 significant genes based on adjusted p-value
+top_genes <- rownames(res_df[order(res_df$padj), ])[1:200]
+
+# Filter normalized counts for selected genes
+heatmap_data <- normalized_counts[top_genes, ]
+
+pheatmap(heatmap_data, 
+         scale = "row", # Normalize by row to compare expression patterns
+         clustering_distance_rows = "euclidean", 
+         clustering_distance_cols = "euclidean",
+         clustering_method = "complete",
+         show_rownames = TRUE,
+         show_colnames = TRUE,
+         annotation_col = sample_info)
+```
+```{r}
+# Load required libraries
+library(ggplot2)
+library(tidyr)
+library(dplyr)
+
+# Your data in a dataframe
+data <- data.frame(
+  condition = c("<300", "300 - <800", "800 - <1200", "1200 - 2000", ">2000"),
+  Ysh1 = c(18.23333333,
+22,
+34,
+26.66666667,
+36.86666667), Rna15 = c(17,
+21.93333333,
+34.8,
+30.73333333,
+35.16666667),
+  Ysh1_sd = c(1.674315781,
+2.749545417,
+3.377869151,
+2.532455988,
+2.90229794), Rna15_sd = c(1.513274595,
+1.150362262,
+1.637070554,
+1.703917056,
+1.692138686)
+)
+data$condition <- factor(data$condition, levels = c("<300", "300 - <800", "800 - <1200", "1200 - 2000", ">2000"))
+
+# Reshape the data into a tidy format
+data_long <- data %>%
+  pivot_longer(
+    cols = -condition,
+    names_to = "full_name",
+    values_to = "value"
+  ) %>%
+  mutate(
+    measurement = case_when(
+      grepl("Ysh1", full_name) ~ "Ysh1",
+      grepl("Rna15", full_name) ~ "Rna15"
+    ),
+    stat = ifelse(grepl("_sd$", full_name), "std_dev", "mean")
+  ) %>%
+  select(-full_name) %>% 
+  pivot_wider(
+    names_from = "stat",
+    values_from = "value",
+    values_fill = 0
+  )
+
+# Create the plot
+p <- ggplot(data_long, aes(x = condition, y = mean, fill = measurement)) +
+  geom_col(position = position_dodge(width = 0.8), width = 0.7) +  # Bars
+  geom_errorbar(
+    aes(ymin = mean - std_dev, ymax = mean + std_dev),
+    position = position_dodge(width = 0.8),
+    width = 0.2
+  ) +  # Error bars
+  labs(
+    title = "Comparison of Read Through and Extensions",
+    x = "Condition",
+    y = "Mean Value",
+    fill = "Measurement"
+  ) +
+  theme_minimal() + theme(text = element_text(family = "Arial"))
+
+# Display the plot
+print(p)
+ggsave("/home/guillom/Downloads/window_sizes_smaller_bins.svg", p, width = 10, height = 4, dpi = 800)
+```
+```{r}
+wt_3 <- read.delim(file = "/home/guillom/alignments/keaton_ysh1/wt_3chr.genes.bed", header = FALSE)
+wt_3 <- wt_3 %>% select(-V4, -V5, -V7,-V8, -V9, -V15)
+
+wt_2 <- read.delim(file = "/home/guillom/alignments/keaton_ysh1/wt_2chr.genes.bed", header = FALSE)
+wt_2 <- wt_2 %>% select(-V4, -V5, -V7,-V8, -V9, -V15)
+
+wt_1 <- read.delim(file = "/home/guillom/alignments/keaton_ysh1/wt_1chr.genes.bed", header = FALSE)
+wt_1 <- wt_1 %>% select(-V4, -V5, -V7,-V8, -V9, -V15)
+
+wt_1_gim4 <- wt_1[grepl("YEL003W", wt_1$V10), ]
+wt_2_gim4 <- wt_2[grepl("YEL003W", wt_2$V10), ]
+wt_3_gim4 <- wt_3[grepl("YEL003W", wt_3$V10), ]
+
+wt_1_gim4 <- wt_1_gim4 %>%
+  group_by(V10) %>%
+  mutate(five_prime_end = if_else(V16 == "+", 
+                               as.integer(names(sort(table(V12), decreasing = TRUE)[1])), 
+                               as.integer(names(sort(table(V13), decreasing = TRUE)[1]))))
+
+wt_2_gim4 <- wt_2_gim4 %>%
+  group_by(V10) %>%
+  mutate(five_prime_end = if_else(V16 == "+", 
+                               as.integer(names(sort(table(V12), decreasing = TRUE)[1])), 
+                               as.integer(names(sort(table(V13), decreasing = TRUE)[1]))))
+
+wt_3_gim4 <- wt_3_gim4 %>%
+  group_by(V10) %>%
+  mutate(five_prime_end = if_else(V16 == "+", 
+                               as.integer(names(sort(table(V12), decreasing = TRUE)[1])), 
+                               as.integer(names(sort(table(V13), decreasing = TRUE)[1]))))
+
+wt_1_gim4_ext <- subset(wt_1_gim4, wt_1_gim4$V12 < 148159)
+wt_2_gim4_ext <- subset(wt_2_gim4, wt_2_gim4$V12 < 148159)
+wt_3_gim4_ext <- subset(wt_3_gim4, wt_3_gim4$V12 < 148159)
+
+wt_1_gim4_noext <- subset(wt_1_gim4, wt_1_gim4$V12 > 148158)
+wt_2_gim4_noext <- subset(wt_2_gim4, wt_2_gim4$V12 > 148158)
+wt_3_gim4_noext <- subset(wt_3_gim4, wt_3_gim4$V12 > 148158)
+
+write.csv(wt_1_gim4_noext, file = "/home/guillom/alignments/keaton_ysh1/wt_1_gim4_noext.csv")
+write.csv(wt_2_gim4_noext, file = "/home/guillom/alignments/keaton_ysh1/wt_2_gim4_noext.csv")
+write.csv(wt_3_gim4_noext, file = "/home/guillom/alignments/keaton_ysh1/wt_3_gim4_noext.csv")
+
+write.csv(wt_1_gim4_ext, file = "/home/guillom/alignments/keaton_ysh1/wt_1_gim4_ext.csv")
+write.csv(wt_2_gim4_ext, file = "/home/guillom/alignments/keaton_ysh1/wt_2_gim4_ext.csv")
+write.csv(wt_3_gim4_ext, file = "/home/guillom/alignments/keaton_ysh1/wt_3_gim4_ext.csv")
+```
+```{r}
+wt_1_YDL012C <- wt_1[grepl("YDL012C", wt_1$V10), ]
+wt_2_YDL012C <- wt_2[grepl("YDL012C", wt_2$V10), ]
+wt_3_YDL012C <- wt_3[grepl("YDL012C", wt_3$V10), ]
+
+wt_1_YDL012C <- wt_1_YDL012C %>%
+  group_by(V10) %>%
+  mutate(five_prime_end = if_else(V16 == "+", 
+                               as.integer(names(sort(table(V12), decreasing = TRUE)[1])), 
+                               as.integer(names(sort(table(V13), decreasing = TRUE)[1]))))
+
+wt_2_YDL012C <- wt_2_YDL012C %>%
+  group_by(V10) %>%
+  mutate(five_prime_end = if_else(V16 == "+", 
+                               as.integer(names(sort(table(V12), decreasing = TRUE)[1])), 
+                               as.integer(names(sort(table(V13), decreasing = TRUE)[1]))))
+
+wt_3_YDL012C <- wt_3_YDL012C %>%
+  group_by(V10) %>%
+  mutate(five_prime_end = if_else(V16 == "+", 
+                               as.integer(names(sort(table(V12), decreasing = TRUE)[1])), 
+                               as.integer(names(sort(table(V13), decreasing = TRUE)[1]))))
+
+wt_1_YDL012C_ext <- subset(wt_1_YDL012C, wt_1_YDL012C$V13 > 431541)
+wt_2_YDL012C_ext <- subset(wt_2_YDL012C, wt_2_YDL012C$V13 > 431541)
+wt_3_YDL012C_ext <- subset(wt_3_YDL012C, wt_3_YDL012C$V13 > 431541)
+
+wt_1_YDL012C_noext <- subset(wt_1_YDL012C, wt_1_YDL012C$V13 < 431542)
+wt_2_YDL012C_noext <- subset(wt_2_YDL012C, wt_2_YDL012C$V13 < 431542)
+wt_3_YDL012C_noext <- subset(wt_3_YDL012C, wt_3_YDL012C$V13 < 431542)
+
+write.csv(wt_1_YDL012C_noext, file = "/home/guillom/alignments/keaton_ysh1/wt_1_YDL012C_noext.csv")
+write.csv(wt_2_YDL012C_noext, file = "/home/guillom/alignments/keaton_ysh1/wt_2_YDL012C_noext.csv")
+write.csv(wt_3_YDL012C_noext, file = "/home/guillom/alignments/keaton_ysh1/wt_3_YDL012C_noext.csv")
+
+write.csv(wt_1_YDL012C_ext, file = "/home/guillom/alignments/keaton_ysh1/wt_1_YDL012C_ext.csv")
+write.csv(wt_2_YDL012C_ext, file = "/home/guillom/alignments/keaton_ysh1/wt_2_YDL012C_ext.csv")
+write.csv(wt_3_YDL012C_ext, file = "/home/guillom/alignments/keaton_ysh1/wt_3_YDL012C_ext.csv")
+```
+```{r}
+ysh1_3 <- read.delim(file = "/home/guillom/alignments/keaton_ysh1/ysh1_3chr_genes.bed", header = FALSE)
+ysh1_3 <- ysh1_3 %>% select(-V4, -V5, -V7,-V8, -V9, -V15)
+
+ysh1_2 <- read.delim(file = "/home/guillom/alignments/keaton_ysh1/ysh1_2chr_genes.bed", header = FALSE)
+ysh1_2 <- ysh1_2 %>% select(-V4, -V5, -V7,-V8, -V9, -V15)
+
+ysh1_1 <- read.delim(file = "/home/guillom/alignments/keaton_ysh1/ysh1_1chr_genes.bed", header = FALSE)
+ysh1_1 <- ysh1_1 %>% select(-V4, -V5, -V7,-V8, -V9, -V15)
+
+ysh1_1_RPS9A <- ysh1_1[grepl("YPL081W", ysh1_1$V10), ]
+ysh1_2_RPS9A <- ysh1_2[grepl("YPL081W", ysh1_2$V10), ]
+ysh1_3_RPS9A <- ysh1_3[grepl("YPL081W", ysh1_3$V10), ]
+
+r15_1_RPS9A <- r15_1[grepl("YPL081W", r15_1$V10), ]
+r15_2_RPS9A <- r15_2[grepl("YPL081W", r15_2$V10), ]
+r15_3_RPS9A <- r15_3[grepl("YPL081W", r15_3$V10), ]
+
+ysh1_1_RPS9A <- ysh1_1_RPS9A %>%
+  group_by(V10) %>%
+  mutate(five_prime_end = if_else(V16 == "+", 
+                               as.integer(names(sort(table(V12), decreasing = TRUE)[1])), 
+                               as.integer(names(sort(table(V13), decreasing = TRUE)[1]))))
+
+ysh1_2_RPS9A <- ysh1_2_RPS9A %>%
+  group_by(V10) %>%
+  mutate(five_prime_end = if_else(V16 == "+", 
+                               as.integer(names(sort(table(V12), decreasing = TRUE)[1])), 
+                               as.integer(names(sort(table(V13), decreasing = TRUE)[1]))))
+
+ysh1_3_RPS9A <- ysh1_3_RPS9A %>%
+  group_by(V10) %>%
+  mutate(five_prime_end = if_else(V16 == "+", 
+                               as.integer(names(sort(table(V12), decreasing = TRUE)[1])), 
+                               as.integer(names(sort(table(V13), decreasing = TRUE)[1]))))
+
+r15_1_RPS9A <- r15_1_RPS9A %>%
+  group_by(V10) %>%
+  mutate(five_prime_end = if_else(V16 == "+", 
+                               as.integer(names(sort(table(V12), decreasing = TRUE)[1])), 
+                               as.integer(names(sort(table(V13), decreasing = TRUE)[1]))))
+
+r15_2_RPS9A <- r15_2_RPS9A %>%
+  group_by(V10) %>%
+  mutate(five_prime_end = if_else(V16 == "+", 
+                               as.integer(names(sort(table(V12), decreasing = TRUE)[1])), 
+                               as.integer(names(sort(table(V13), decreasing = TRUE)[1]))))
+
+r15_3_RPS9A <- r15_3_RPS9A %>%
+  group_by(V10) %>%
+  mutate(five_prime_end = if_else(V16 == "+", 
+                               as.integer(names(sort(table(V12), decreasing = TRUE)[1])), 
+                               as.integer(names(sort(table(V13), decreasing = TRUE)[1]))))
+
+ysh1_1_RPS9A_ext <- subset(ysh1_1_RPS9A, ysh1_1_RPS9A$V13 > 406498)
+ysh1_2_RPS9A_ext <- subset(ysh1_2_RPS9A, ysh1_2_RPS9A$V13 > 406498)
+ysh1_3_RPS9A_ext <- subset(ysh1_3_RPS9A, ysh1_3_RPS9A$V13 > 406498)
+
+r15_1_RPS9A_ext <- subset(r15_1_RPS9A, r15_1_RPS9A$V13 > 406498)
+r15_2_RPS9A_ext <- subset(r15_2_RPS9A, r15_2_RPS9A$V13 > 406498)
+r15_3_RPS9A_ext <- subset(r15_3_RPS9A, r15_3_RPS9A$V13 > 406498)
+
+write.csv(ysh1_1_RPS9A_ext, file = "/home/guillom/alignments/keaton_ysh1/ysh1_1_RPS9A_ext.csv")
+write.csv(ysh1_2_RPS9A_ext, file = "/home/guillom/alignments/keaton_ysh1/ysh1_2_RPS9A_ext.csv")
+write.csv(ysh1_3_RPS9A_ext, file = "/home/guillom/alignments/keaton_ysh1/ysh1_3_RPS9A_ext.csv")
+
+write.csv(r15_1_RPS9A_ext, file = "/home/guillom/alignments/keaton_ysh1/r15_1_RPS9A_ext.csv")
+write.csv(r15_2_RPS9A_ext, file = "/home/guillom/alignments/keaton_ysh1/r15_2_RPS9A_ext.csv")
+write.csv(r15_3_RPS9A_ext, file = "/home/guillom/alignments/keaton_ysh1/r15_3_RPS9A_ext.csv")
+```
+```{r}
+ysh1_1_RPL18B <- ysh1_1[grepl("YNL301C", ysh1_1$V10), ]
+ysh1_2_RPL18B <- ysh1_2[grepl("YNL301C", ysh1_2$V10), ]
+ysh1_3_RPL18B <- ysh1_3[grepl("YNL301C", ysh1_3$V10), ]
+
+r15_1_RPL18B <- r15_1[grepl("YNL301C", r15_1$V10), ]
+r15_2_RPL18B <- r15_2[grepl("YNL301C", r15_2$V10), ]
+r15_3_RPL18B <- r15_3[grepl("YNL301C", r15_3$V10), ]
+
+ysh1_1_RPL18B <- ysh1_1_RPL18B %>%
+  group_by(V10) %>%
+  mutate(five_prime_end = if_else(V16 == "+", 
+                               as.integer(names(sort(table(V12), decreasing = TRUE)[1])), 
+                               as.integer(names(sort(table(V13), decreasing = TRUE)[1]))))
+
+ysh1_2_RPL18B <- ysh1_2_RPL18B %>%
+  group_by(V10) %>%
+  mutate(five_prime_end = if_else(V16 == "+", 
+                               as.integer(names(sort(table(V12), decreasing = TRUE)[1])), 
+                               as.integer(names(sort(table(V13), decreasing = TRUE)[1]))))
+
+ysh1_3_RPL18B <- ysh1_3_RPL18B %>%
+  group_by(V10) %>%
+  mutate(five_prime_end = if_else(V16 == "+", 
+                               as.integer(names(sort(table(V12), decreasing = TRUE)[1])), 
+                               as.integer(names(sort(table(V13), decreasing = TRUE)[1]))))
+
+r15_1_RPL18B <- r15_1_RPL18B %>%
+  group_by(V10) %>%
+  mutate(five_prime_end = if_else(V16 == "+", 
+                               as.integer(names(sort(table(V12), decreasing = TRUE)[1])), 
+                               as.integer(names(sort(table(V13), decreasing = TRUE)[1]))))
+
+r15_2_RPL18B <- r15_2_RPL18B %>%
+  group_by(V10) %>%
+  mutate(five_prime_end = if_else(V16 == "+", 
+                               as.integer(names(sort(table(V12), decreasing = TRUE)[1])), 
+                               as.integer(names(sort(table(V13), decreasing = TRUE)[1]))))
+
+r15_3_RPL18B <- r15_3_RPL18B %>%
+  group_by(V10) %>%
+  mutate(five_prime_end = if_else(V16 == "+", 
+                               as.integer(names(sort(table(V12), decreasing = TRUE)[1])), 
+                               as.integer(names(sort(table(V13), decreasing = TRUE)[1]))))
+
+ysh1_1_RPL18B_ext <- subset(ysh1_1_RPL18B, ysh1_1_RPL18B$V12 < 61993)
+ysh1_2_RPL18B_ext <- subset(ysh1_2_RPL18B, ysh1_2_RPL18B$V12 < 61993)
+ysh1_3_RPL18B_ext <- subset(ysh1_3_RPL18B, ysh1_3_RPL18B$V12 < 61993)
+
+r15_1_RPL18B_ext <- subset(r15_1_RPL18B, r15_1_RPL18B$V12 < 61993)
+r15_2_RPL18B_ext <- subset(r15_2_RPL18B, r15_2_RPL18B$V12 < 61993)
+r15_3_RPL18B_ext <- subset(r15_3_RPL18B, r15_3_RPL18B$V12 < 61993)
+
+write.csv(ysh1_1_RPL18B_ext, file = "/home/guillom/alignments/keaton_ysh1/ysh1_1_RPL18B_ext.csv")
+write.csv(ysh1_2_RPL18B_ext, file = "/home/guillom/alignments/keaton_ysh1/ysh1_2_RPL18B_ext.csv")
+write.csv(ysh1_3_RPL18B_ext, file = "/home/guillom/alignments/keaton_ysh1/ysh1_3_RPL18B_ext.csv")
+
+write.csv(r15_1_RPL18B_ext, file = "/home/guillom/alignments/keaton_ysh1/r15_1_RPL18B_ext.csv")
+write.csv(r15_2_RPL18B_ext, file = "/home/guillom/alignments/keaton_ysh1/r15_2_RPL18B_ext.csv")
+write.csv(r15_3_RPL18B_ext, file = "/home/guillom/alignments/keaton_ysh1/r15_3_RPL18B_ext.csv")
+```
+```{r}
+bam_files <- c("/home/guillom/alignments/keaton_ysh1/wt_1_YDL012C_ext.bam", "/home/guillom/alignments/keaton_ysh1/wt_2_YDL012C_ext.bam", "/home/guillom/alignments/keaton_ysh1/wt_3_YDL012C_ext.bam", "/home/guillom/alignments/keaton_ysh1/wt_1_YDL012C_noext.bam", "/home/guillom/alignments/keaton_ysh1/wt_2_YDL012C_noext.bam", "/home/guillom/alignments/keaton_ysh1/wt_3_YDL012C_noext.bam")
+
+fc_results_ysh1 <- featureCounts(bam_files, annot.ext="/home/guillom/Downloads/S288C_reference_genome_R64-5-1_20240529/saccharomyces_cerevisiae.20240529.gff", isGTFAnnotationFile=TRUE, 
+                            GTF.featureType="intron", GTF.attrType="Name", strandSpecific=1, isLongRead=TRUE, countMultiMappingReads=FALSE, minOverlap=6,
+                            useMetaFeatures=TRUE, nthreads=8)
+counts_ysh1 <- fc_results_ysh1$counts
+```
+```{r}
+bam_files <- c("/home/guillom/alignments/keaton_ysh1/wt_1_gim4_ext.bam", "/home/guillom/alignments/keaton_ysh1/wt_2_gim4_ext.bam", "/home/guillom/alignments/keaton_ysh1/wt_3_gim4_ext.bam", "/home/guillom/alignments/keaton_ysh1/wt_1_gim4_noext.bam", "/home/guillom/alignments/keaton_ysh1/wt_2_gim4_noext.bam", "/home/guillom/alignments/keaton_ysh1/wt_3_gim4_noext.bam")
+
+fc_results_ysh1 <- featureCounts(bam_files, annot.ext="/home/guillom/Downloads/S288C_reference_genome_R64-5-1_20240529/saccharomyces_cerevisiae.20240529.gff", isGTFAnnotationFile=TRUE, 
+                            GTF.featureType="intron", GTF.attrType="Name", strandSpecific=1, isLongRead=TRUE, countMultiMappingReads=FALSE, minOverlap=6,
+                            useMetaFeatures=TRUE, nthreads=8)
+counts_ysh1 <- fc_results_ysh1$counts
+```
+```{r}
+# Load required libraries
+library(ggplot2)
+library(tidyr)
+library(dplyr)
+
+# Your data in a dataframe
+data <- data.frame(
+  condition = c("gim4_ext", "gim4_noext"),
+  mean = c(48.43333333, 8),
+  std_dev = c(2.713546265, 1.734935157)
+)
+
+# Convert condition to a factor to maintain the desired order
+data$condition <- factor(data$condition, levels = c("gim4_ext", "gim4_noext"))
+
+# Create the plot
+p <- ggplot(data, aes(x = condition, y = mean, fill = "Average Percent Unspliced")) +
+  geom_col(width = 0.7) +  # Bars
+  geom_errorbar(
+    aes(ymin = mean - std_dev, ymax = mean + std_dev),
+    width = 0.2
+  ) +  # Error bars
+  labs(
+    x = "Extension sizes",
+    y = "Percent unspliced",
+    fill = "Measurement"
+  ) +
+  scale_fill_manual(values = c("Average Percent Unspliced" = "skyblue")) + 
+  theme_minimal() +
+  theme(
+    text = element_text(family = "Arial"), 
+    axis.text = element_text(size = 12),      # Adjust axis label size
+    axis.title = element_text(size = 12),     # Adjust axis title size
+    legend.text = element_text(size = 10),    # Adjust legend text size
+    legend.title = element_text(size = 11)    # Adjust legend title size
+  )
+
+# Display the plot
+print(p)
+ggsave("/home/guillom/Downloads/gim4_ext.png", p, width = 10, height = 4, dpi = 800)
+```
+```{r}
+# Load required libraries
+library(ggplot2)
+library(tidyr)
+library(dplyr)
+
+# Your data in a dataframe
+data <- data.frame(
+  condition = c("YDL012C_ext", "YDL012C_noext"),
+  mean = c(27.2, 2.266666667),
+  std_dev = c(9.132907533, 1.436430762)
+)
+
+# Convert condition to a factor to maintain the desired order
+data$condition <- factor(data$condition, levels = c("YDL012C_ext", "YDL012C_noext"))
+
+# Create the plot
+p <- ggplot(data, aes(x = condition, y = mean, fill = "Average Percent Unspliced")) +
+  geom_col(width = 0.7) +  # Bars
+  geom_errorbar(
+    aes(ymin = mean - std_dev, ymax = mean + std_dev),
+    width = 0.2
+  ) +  # Error bars
+  labs(
+    x = "Extension sizes",
+    y = "Percent unspliced",
+    fill = "Measurement"
+  ) +
+  scale_fill_manual(values = c("Average Percent Unspliced" = "skyblue")) + 
+  theme_minimal() +
+  theme(
+    text = element_text(family = "Arial"), 
+    axis.text = element_text(size = 12),      # Adjust axis label size
+    axis.title = element_text(size = 12),     # Adjust axis title size
+    legend.text = element_text(size = 10),    # Adjust legend text size
+    legend.title = element_text(size = 11)    # Adjust legend title size
+  )
+
+# Display the plot
+print(p)
+ggsave("/home/guillom/Downloads/YDL012C_ext.png", p, width = 10, height = 4, dpi = 800)
+```
+```{r}
+library(Rsubread)
+library(DESeq2)
+# Set up file paths for your BAM files
+bam_files <- c("/home/guillom/alignments/keaton_ysh1/wt_1chr.sorted.bam", "/home/guillom/alignments/keaton_ysh1/wt_2chr.sorted.bam","/home/guillom/alignments/keaton_ysh1/wt_3chr.sorted.bam")
+
+# Generate the count matrix using featureCounts
+fc_results <- featureCounts(bam_files, annot.ext="/home/guillom/Downloads/S288C_reference_genome_R64-5-1_20240529/saccharomyces_cerevisiae.20240529.gff", isGTFAnnotationFile=TRUE, 
+                            GTF.featureType="intron", GTF.attrType="Name", isLongRead=TRUE, minOverlap=6, nthreads=12)
+counts <- fc_results$counts
+
+fc_results_whole_transcriptome <- featureCounts(bam_files, annot.ext="/home/guillom/Downloads/S288C_reference_genome_R64-5-1_20240529/saccharomyces_cerevisiae.20240529.gff", isGTFAnnotationFile=TRUE, 
+                            GTF.featureType="CDS", GTF.attrType="Name", allowMultiOverlap = TRUE, isLongRead=TRUE, nthreads=12)
+counts_whole_transcriptome <- fc_results_whole_transcriptome$counts
+
+# Ensure row names in both dataframes are consistent
+rownames(counts) <- gsub("_intron", "", rownames(counts))
+rownames(counts_whole_transcriptome) <- gsub("_CDS", "", rownames(counts_whole_transcriptome))
+# Find matching row names
+matching_rows <- intersect(rownames(counts), rownames(counts_whole_transcriptome))
+
+# Perform division for each matching row
+normalized_splicing_fast_slow <- counts[matching_rows, ] / (counts[matching_rows, ] + counts_whole_transcriptome[matching_rows, ])
+
+normalized_splicing_fast_slow <- cbind(rowname = rownames(normalized_splicing_fast_slow), as.data.frame(normalized_splicing_fast_slow))
+#write.csv(normalized_splicing_fast_slow, file = '/home/guillom/alignments/fast_slow_pol_ii/normalized_splicing_fast_slow.csv')
+```
+```{R}
+library(Rsubread)
+library(DESeq2)
+# Set up file paths for your BAM files
+bam_files <- c("/home/guillom/alignments/keaton_ysh1/wt_1chr.sorted.bam", "/home/guillom/alignments/keaton_ysh1/wt_2chr.sorted.bam","/home/guillom/alignments/keaton_ysh1/wt_3chr.sorted.bam","/home/guillom/alignments/keaton_ysh1/snp1_120aa-1chr.sorted.bam", "/home/guillom/alignments/keaton_ysh1/snp1_120aa-2chr.sorted.bam", "/home/guillom/alignments/keaton_ysh1/snp1_120aa-3chr.sorted.bam")
+
+fc_results_whole_transcriptome <- featureCounts(bam_files, annot.ext="/home/guillom/Downloads/S288C_reference_genome_R64-5-1_20240529/saccharomyces_cerevisiae.20240529.gff", isGTFAnnotationFile=TRUE, 
+                            GTF.featureType="CDS", GTF.attrType="Name", isLongRead=TRUE, nthreads=12, allowMultiOverlap = TRUE)
+counts_whole_transcriptome <- fc_results_whole_transcriptome$counts
+```
+```{r}
+sample_info <- data.frame(
+  row.names = c("wt_1chr.sorted.bam","wt_2chr.sorted.bam","wt_3chr.sorted.bam","snp1_120aa-1chr.sorted.bam", "snp1_120aa-2chr.sorted.bam", "snp1_120aa-3chr.sorted.bam"),
+  condition = factor(rep(c("wt", "snp1"), each=3))
+)
+
+# Create DESeq2 dataset
+dds <- DESeqDataSetFromMatrix(countData = counts_whole_transcriptome,
+                              colData = sample_info,
+                              design = ~ condition)
+
+# Run DESeq2
+dds <- DESeq(dds)
+
+res <- results(dds, contrast = c("condition", "snp1", "wt"))
+
+# View results
+head(res)
+
+library(ggplot2)
+
+# Convert DESeq2 results to a data frame
+res_df <- as.data.frame(res)
+
+# Add a column to label significant genes
+res_df$significant <- ifelse(res_df$padj < 0.05, "Significant", "Not Significant")
+
+# Add gene names or row names for labeling
+res_df$rowname <- rownames(res_df)
+
+# Volcano plot
+p <- ggplot(res_df, aes(x = log2FoldChange, y = -log10(padj), color = significant, text = rowname)) +
+  geom_point(alpha = 0.8) +
+  scale_color_manual(values = c("Significant" = "red", "Not Significant" = "grey")) +
+  theme_minimal() +
+  labs(x = "Log2 Fold Change", y = "-Log10 Adjusted p-value", title = "Volcano Plot") +
+  theme(legend.title = element_blank())
+ggplotly(p, tooltip = "text")
+```
+```{r}
+snp1_3 <- read.delim(file = "/home/guillom/alignments/keaton_ysh1/snp1_120aa-3chr.genes.bed", header = FALSE)
+snp1_3 <- snp1_3 %>% select(-V4, -V5, -V7,-V8, -V9, -V15)
+
+snp1_2 <- read.delim(file = "/home/guillom/alignments/keaton_ysh1/snp1_120aa-2chr.genes.bed", header = FALSE)
+snp1_2 <- snp1_2 %>% select(-V4, -V5, -V7,-V8, -V9, -V15)
+
+snp1_1 <- read.delim(file = "/home/guillom/alignments/keaton_ysh1/snp1_120aa-1chr.genes.bed", header = FALSE)
+snp1_1 <- snp1_1 %>% select(-V4, -V5, -V7,-V8, -V9, -V15)
+
+snp1_1 <- snp1_1 %>%
+  mutate(utr3_length = ifelse(V16 == "-", V2 - V12, 
+ ifelse(V16 == "+", V13 - V3 , NA)))
+snp1_2 <- snp1_2 %>%
+    mutate(utr3_length = ifelse(V16 == "-", V2 - V12, 
+ ifelse(V16 == "+", V13 - V3 , NA)))
+snp1_3 <- snp1_3 %>%
+  mutate(utr3_length = ifelse(V16 == "-", V2 - V12, 
+ ifelse(V16 == "+", V13 - V3 , NA)))
+
+r15_1 <- r15_1 %>%
+  mutate(utr3_length = ifelse(V16 == "-", V2 - V12, 
+ ifelse(V16 == "+", V13 - V3 , NA)))
+r15_2 <- r15_2 %>%
+    mutate(utr3_length = ifelse(V16 == "-", V2 - V12, 
+ ifelse(V16 == "+", V13 - V3 , NA)))
+r15_3 <- r15_3 %>%
+  mutate(utr3_length = ifelse(V16 == "-", V2 - V12, 
+ ifelse(V16 == "+", V13 - V3 , NA)))
+
+Ysh1_1 <- Ysh1_1 %>%
+  mutate(utr3_length = ifelse(V16 == "-", V2 - V12, 
+ ifelse(V16 == "+", V13 - V3 , NA)))
+Ysh1_2 <- Ysh1_2 %>%
+    mutate(utr3_length = ifelse(V16 == "-", V2 - V12, 
+ ifelse(V16 == "+", V13 - V3 , NA)))
+Ysh1_3 <- Ysh1_3 %>%
+  mutate(utr3_length = ifelse(V16 == "-", V2 - V12, 
+ ifelse(V16 == "+", V13 - V3 , NA)))
+
+wt_1 <- wt_1 %>%
+  mutate(utr3_length = ifelse(V16 == "-", V2 - V12, 
+ ifelse(V16 == "+", V13 - V3 , NA)))
+wt_2 <- wt_2 %>%
+    mutate(utr3_length = ifelse(V16 == "-", V2 - V12, 
+ ifelse(V16 == "+", V13 - V3 , NA)))
+wt_3 <- wt_3 %>%
+  mutate(utr3_length = ifelse(V16 == "-", V2 - V12, 
+ ifelse(V16 == "+", V13 - V3 , NA)))
+```
+```{r}
+wt3_filtered <- subset(wt_3, wt_3$utr3_length > 0)
+wt2_filtered <- subset(wt_2, wt_2$utr3_length > 0)
+wt1_filtered <- subset(wt_1, wt_1$utr3_length > 0)
+
+ysh1_3_filtered <- subset(Ysh1_3, Ysh1_3$utr3_length > 0)
+ysh1_2_filtered <- subset(Ysh1_2, Ysh1_2$utr3_length > 0)
+ysh1_1_filtered <- subset(Ysh1_1, Ysh1_1$utr3_length > 0)
+
+r15_3_filtered <- subset(r15_3, r15_3$utr3_length > 0)
+r15_2_filtered <- subset(r15_2, r15_2$utr3_length > 0)
+r15_1_filtered <- subset(r15_1, r15_1$utr3_length > 0)
+
+snp1_3_filtered <- subset(snp1_3, snp1_3$utr3_length > 0)
+snp1_2_filtered <- subset(snp1_2, snp1_2$utr3_length > 0)
+snp1_1_filtered <- subset(snp1_1, snp1_1$utr3_length > 0)
+```
+```{r}
+# Group by transcript_id and calculate the average of pt:i
+wt3_median_ext <- wt3_filtered %>%
+  group_by(V10) %>%
+  summarize(median_extensions = median(utr3_length, na.rm = TRUE))
+
+# Group by transcript_id and calculate the average of pt:i
+wt2_median_ext <- wt2_filtered %>%
+  group_by(V10) %>%
+  summarize(median_extensions = median(utr3_length, na.rm = TRUE))
+
+# Group by transcript_id and calculate the average of pt:i
+wt1_median_ext <- wt1_filtered %>%
+  group_by(V10) %>%
+  summarize(median_extensions = median(utr3_length, na.rm = TRUE))
+
+# Group by transcript_id and calculate the average of pt:i
+snp1_3_median_ext <- snp1_3_filtered %>%
+  group_by(V10) %>%
+  summarize(median_extensions = median(utr3_length, na.rm = TRUE))
+
+# Group by transcript_id and calculate the average of pt:i
+snp1_2_median_ext <- snp1_2_filtered %>%
+  group_by(V10) %>%
+  summarize(median_extensions = median(utr3_length, na.rm = TRUE))
+
+# Group by transcript_id and calculate the average of pt:i
+snp1_1_median_ext <- snp1_1_filtered %>%
+  group_by(V10) %>%
+  summarize(median_extensions = median(utr3_length, na.rm = TRUE))
+
+# Group by transcript_id and calculate the average of pt:i
+ysh1_3_median_ext <- ysh1_3_filtered %>%
+  group_by(V10) %>%
+  summarize(median_extensions = median(utr3_length, na.rm = TRUE))
+
+# Group by transcript_id and calculate the average of pt:i
+ysh1_2_median_ext <- ysh1_2_filtered %>%
+  group_by(V10) %>%
+  summarize(median_extensions = median(utr3_length, na.rm = TRUE))
+
+# Group by transcript_id and calculate the average of pt:i
+ysh1_1_median_ext <- ysh1_1_filtered %>%
+  group_by(V10) %>%
+  summarize(median_extensions = median(utr3_length, na.rm = TRUE))
+
+# Group by transcript_id and calculate the average of pt:i
+r15_3_median_ext <- r15_3_filtered %>%
+  group_by(V10) %>%
+  summarize(median_extensions = median(utr3_length, na.rm = TRUE))
+
+# Group by transcript_id and calculate the average of pt:i
+r15_2_median_ext <- r15_2_filtered %>%
+  group_by(V10) %>%
+  summarize(median_extensions = median(utr3_length, na.rm = TRUE))
+
+# Group by transcript_id and calculate the average of pt:i
+r15_1_median_ext <- r15_1_filtered %>%
+  group_by(V10) %>%
+  summarize(median_extensions = median(utr3_length, na.rm = TRUE))
+```
+```{r}
+# First, merge wt3_average_polya and wt2_average_polya by column V15
+wt_merged_1 <- merge(wt3_median_ext, wt2_median_ext, by = "V10")
+
+# Then, merge the result with wt1_average_polya by column V15
+wt_merged <- merge(wt_merged_1, wt1_median_ext, by = "V10")
+
+# First, merge wt3_average_polya and wt2_average_polya by column V15
+snp1_merged_1 <- merge(snp1_3_median_ext, snp1_2_median_ext, by = "V10")
+
+# Then, merge the result with wt1_average_polya by column V15
+snp1_merged <- merge(snp1_merged_1, snp1_1_median_ext, by = "V10")
+
+# First, merge wt3_average_polya and wt2_average_polya by column V15
+r15_merged_1 <- merge(r15_3_median_ext, r15_2_median_ext, by = "V10")
+
+# Then, merge the result with wt1_average_polya by column V15
+r15_merged <- merge(r15_merged_1, r15_1_median_ext, by = "V10")
+
+# First, merge wt3_average_polya and wt2_average_polya by column V15
+ysh1_merged_1 <- merge(ysh1_3_median_ext, ysh1_2_median_ext, by = "V10")
+
+# Then, merge the result with wt1_average_polya by column V15
+ysh1_merged <- merge(ysh1_merged_1, ysh1_1_median_ext, by = "V10")
+```
+```{r}
+snp1_merged$avg_median_ext_length_of_replicates <- rowMeans(
+  cbind(snp1_merged$median_extensions.x, snp1_merged$median_extensions.y, snp1_merged$median_extensions),
+  na.rm = TRUE
+)
+
+wt_merged$avg_median_ext_length_of_replicates <- rowMeans(
+  cbind(wt_merged$median_extensions.x, wt_merged$median_extensions.y, wt_merged$median_extensions),
+  na.rm = TRUE
+)
+
+ysh1_merged$avg_median_ext_length_of_replicates <- rowMeans(
+  cbind(ysh1_merged$median_extensions.x, ysh1_merged$median_extensions.y, ysh1_merged$median_extensions),
+  na.rm = TRUE
+)
+
+r15_merged$avg_median_ext_length_of_replicates <- rowMeans(
+  cbind(r15_merged$median_extensions.x, r15_merged$median_extensions.y, r15_merged$median_extensions),
+  na.rm = TRUE
+)
+```
+```{r}
+library(ggplot2)
+library(plotly)
+wt_vs_snp1 <- merge(wt_merged, snp1_merged, by = "V10")
+x <- wt_vs_snp1$avg_median_ext_length_of_replicates.x
+y <- wt_vs_snp1$avg_median_ext_length_of_replicates.y
+
+# Calculate R-squared for annotation
+r_squared <- summary(lm(y ~ x))$r.squared
+
+# Create the ggplot object with tooltip text from V15
+p <- ggplot(wt_vs_snp1, aes(x = avg_median_ext_length_of_replicates.x, 
+                            y = avg_median_ext_length_of_replicates.y, 
+                            text = V10)) +  # Add V15 as tooltip text
+  geom_point() +  # Scatter plot points
+  geom_abline(slope = 1, intercept = 0, linetype = "dashed", color = "red") +
+	ylim(0,500)+
+	xlim(0,500)+# 1:1 line
+  	annotate("text", x = 400, y = 100, label = paste("R² =", round(r_squared, 2)), color = "blue", size = 5) +
+  labs(x = "WT 3' UTR lengths", y = "SNP1 3' UTR length", title = "Comparison of 3' UTR lengths ALL GENES") +
+  theme_minimal()
+
+# Convert to interactive plotly plot
+ggplotly(p, tooltip = "text")
+ggsave("/home/guillom/Downloads/snp1_vs_wt.svg", plot = p, width = 6, height = 4, dpi = 800)
+```
+```{r}
+wt_vs_ysh1 <- merge(wt_merged, ysh1_merged, by = "V10")
+x <- wt_vs_ysh1$avg_median_ext_length_of_replicates.x
+y <- wt_vs_ysh1$avg_median_ext_length_of_replicates.y
+
+# Calculate R-squared for annotation
+r_squared <- summary(lm(y ~ x))$r.squared
+
+# Create the ggplot object with tooltip text from V15
+p <- ggplot(wt_vs_ysh1, aes(x = avg_median_ext_length_of_replicates.x, 
+                            y = avg_median_ext_length_of_replicates.y, 
+                            text = V10)) +  # Add V15 as tooltip text
+  geom_point() +  # Scatter plot points
+  geom_abline(slope = 1, intercept = 0, linetype = "dashed", color = "red") +
+	ylim(0,3000)+
+	xlim(0,3000)+# 1:1 line
+  	annotate("text", x = 2000, y = 500, label = paste("R² =", round(r_squared, 2)), color = "blue", size = 5) +
+  labs(x = "WT 3' UTR lengths", y = "YSH1 3' UTR length", title = "Comparison of 3' UTR lengths ALL GENES") +
+  theme_minimal()
+
+# Convert to interactive plotly plot
+ggplotly(p, tooltip = "text")
+ggsave("/home/guillom/Downloads/ysh1_vs_wt.svg", plot = p, width = 6, height = 4, dpi = 800)
+```
+```{r}
+wt_vs_r15 <- merge(wt_merged, r15_merged, by = "V10")
+x <- wt_vs_r15$avg_median_ext_length_of_replicates.x
+y <- wt_vs_r15$avg_median_ext_length_of_replicates.y
+
+# Calculate R-squared for annotation
+r_squared <- summary(lm(y ~ x))$r.squared
+
+# Create the ggplot object with tooltip text from V15
+p <- ggplot(wt_vs_r15, aes(x = avg_median_ext_length_of_replicates.x, 
+                            y = avg_median_ext_length_of_replicates.y, 
+                            text = V10)) +  # Add V15 as tooltip text
+  geom_point() +  # Scatter plot points
+  geom_abline(slope = 1, intercept = 0, linetype = "dashed", color = "red") +
+	ylim(0,3000)+
+	xlim(0,3000)+# 1:1 line
+  	annotate("text", x = 2000, y = 500, label = paste("R² =", round(r_squared, 2)), color = "blue", size = 5) +
+  labs(x = "WT 3' UTR lengths", y = "RNA15 3' UTR length", title = "Comparison of 3' UTR lengths ALL GENES") +
+  theme_minimal()
+
+# Convert to interactive plotly plot
+ggplotly(p, tooltip = "text")
+ggsave("/home/guillom/Downloads/r15_vs_wt.svg", plot = p, width = 6, height = 4, dpi = 800)
+```
+```{r}
+library(stringr)
+snp1_merged$V10 <- str_extract(snp1_merged$V10, "(?<=gene_id )[^[:space:];]+")
+
+snp1_icg <- snp1_merged[snp1_merged$V10 %in% yeast_icg$V1, ]
+
+wt_merged$V10 <- str_extract(wt_merged$V10, "(?<=gene_id )[^[:space:];]+")
+
+wt_icg <- wt_merged[wt_merged$V10 %in% yeast_icg$V1, ]
+
+library(ggplot2)
+library(plotly)
+wt_vs_snp1 <- merge(wt_icg, snp1_icg, by = "V10")
+x <- wt_vs_snp1$avg_median_ext_length_of_replicates.x
+y <- wt_vs_snp1$avg_median_ext_length_of_replicates.y
+
+# Calculate R-squared for annotation
+r_squared <- summary(lm(y ~ x))$r.squared
+
+# Create the ggplot object with tooltip text from V15
+p <- ggplot(wt_vs_snp1, aes(x = avg_median_ext_length_of_replicates.x, 
+                            y = avg_median_ext_length_of_replicates.y, 
+                            text = V10)) +  # Add V15 as tooltip text
+  geom_point() +  # Scatter plot points
+  geom_abline(slope = 1, intercept = 0, linetype = "dashed", color = "red") +
+	ylim(0,500)+
+	xlim(0,500)+# 1:1 line
+  	annotate("text", x = 400, y = 100, label = paste("R² =", round(r_squared, 2)), color = "blue", size = 5) +
+  labs(x = "WT 3' UTR lengths", y = "SNP1 3' UTR length", title = "Comparison of 3' UTR lengths ICG") +
+  theme_minimal()
+
+# Convert to interactive plotly plot
+ggplotly(p, tooltip = "text")
+ggsave("/home/guillom/Downloads/snp1_vs_wt_icg.svg", plot = p, width = 6, height = 4, dpi = 800)
+```
+```{r}
+bam_files <- c("/home/guillom/alignments/keaton_ysh1/wt_1chr.sorted.bam", "/home/guillom/alignments/keaton_ysh1/wt_2chr.sorted.bam","/home/guillom/alignments/keaton_ysh1/wt_3chr.sorted.bam", "/home/guillom/alignments/keaton_ysh1/snp1_120aa-1chr.sorted.bam", "/home/guillom/alignments/keaton_ysh1/snp1_120aa-2chr.sorted.bam", "/home/guillom/alignments/keaton_ysh1/snp1_120aa-3chr.sorted.bam", "/home/guillom/alignments/keaton_ysh1/ysh1_1chr.sorted.bam", "/home/guillom/alignments/keaton_ysh1/ysh1_2chr.sorted.bam", "/home/guillom/alignments/keaton_ysh1/ysh1_3chr.sorted.bam", "/home/guillom/alignments/keaton_ysh1/r15_1chr.sorted.bam", "/home/guillom/alignments/keaton_ysh1/r15_2chr.sorted.bam", "/home/guillom/alignments/keaton_ysh1/r15_3chr.sorted.bam")
+
+# Generate the count matrix using featureCounts
+fc_results <- featureCounts(bam_files, annot.ext="/home/guillom/Downloads/S288C_reference_genome_R64-5-1_20240529/saccharomyces_cerevisiae.20240529.gff", isGTFAnnotationFile=TRUE, 
+                            GTF.featureType="intron", GTF.attrType="Name", isLongRead=TRUE, minOverlap=6, fracOverlapFeature = 0.8, nthreads=12)
+counts <- fc_results$counts
+
+fc_results_whole_transcriptome <- featureCounts(bam_files, annot.ext="/home/guillom/Downloads/S288C_reference_genome_R64-5-1_20240529/saccharomyces_cerevisiae.20240529.gff", isGTFAnnotationFile=TRUE, 
+                            GTF.featureType="CDS", GTF.attrType="Name",largestOverlap = TRUE, allowMultiOverlap = TRUE, isLongRead=TRUE, nthreads=12)
+counts_whole_transcriptome <- fc_results_whole_transcriptome$counts
+
+# Ensure row names in both dataframes are consistent
+rownames(counts) <- gsub("_intron", "", rownames(counts))
+rownames(counts_whole_transcriptome) <- gsub("_CDS", "", rownames(counts_whole_transcriptome))
+# Find matching row names
+matching_rows <- intersect(rownames(counts), rownames(counts_whole_transcriptome))
+
+# Perform division for each matching row
+normalized_splicing <- counts[matching_rows, ] / (counts[matching_rows, ] + counts_whole_transcriptome[matching_rows, ])
+
+normalized_splicing <- cbind(rowname = rownames(normalized_splicing), as.data.frame(normalized_splicing))
+write.csv(normalized_splicing, file = '/home/guillom/Downloads/normalized_splicing_snp1.csv')
+```
+```{r}
+sample_info <- data.frame(
+  row.names = c("wt_1chr.sorted.bam","wt_2chr.sorted.bam","wt_3chr.sorted.bam","snp1_120aa-1chr.sorted.bam", "snp1_120aa-2chr.sorted.bam", "snp1_120aa-3chr.sorted.bam", "ysh1_1chr.sorted.bam", "ysh1_2chr.sorted.bam", "ysh1_3chr.sorted.bam", "r15_1chr.sorted.bam", "r15_2chr.sorted.bam", "r15_3chr.sorted.bam"),
+  condition = factor(rep(c("wt", "snp1", "ysh1", "r15"), each=3))
+)
+
+# Create DESeq2 dataset
+dds <- DESeqDataSetFromMatrix(countData = counts_whole_transcriptome,
+                              colData = sample_info,
+                              design = ~ condition)
+
+# Run DESeq2
+dds <- DESeq(dds)
+
+res <- results(dds, contrast = c("condition", "r15", "wt"))
+
+# View results
+head(res)
+
+library(ggplot2)
+
+# Convert DESeq2 results to a data frame
+res_df <- as.data.frame(res)
+
+# Add a column to label significant genes
+res_df$significant <- ifelse(res_df$padj < 0.05, "Significant", "Not Significant")
+
+# Add gene names or row names for labeling
+res_df$rowname <- rownames(res_df)
+
+# Volcano plot
+p <- ggplot(res_df, aes(x = log2FoldChange, y = -log10(padj), color = significant, text = rowname)) +
+  geom_point(alpha = 0.8) +
+  scale_color_manual(values = c("Significant" = "red", "Not Significant" = "grey")) +
+  theme_minimal() +
+  labs(x = "Log2 Fold Change", y = "-Log10 Adjusted p-value", title = "Volcano Plot") +
+  theme(legend.title = element_blank())
+ggplotly(p, tooltip = "text")
+
+```
+```{r}
+library(dplyr)
+library(tidyr)
+library(ggplot2)
+library(plotly)
+
+# Read the CSV
+normalized_splicing_snp1 <- read.csv('/home/guillom/Downloads/normalized_splicing_snp1.csv')
+
+# Reshape the data to long format
+long_df <- pivot_longer(
+  normalized_splicing_snp1, 
+  cols = starts_with("wt") | starts_with("snp1") | starts_with("ysh1") | starts_with("rna15"), 
+  names_to = c("condition", "replicate"), 
+  names_sep = "_", 
+  values_to = "splicing_efficiency"
+)
+
+# Convert condition explicitly
+long_df$condition <- case_when(
+  grepl("wt", long_df$condition) ~ "wt",
+  grepl("ysh1", long_df$condition) ~ "ysh1",
+  grepl("snp1", long_df$condition) ~ "snp1",
+  grepl("rna15", long_df$condition) ~ "rna15"
+)
+
+# Subset the data to include only `wt` and `ysh1` conditions
+long_df <- long_df %>%
+  filter(condition %in% c("wt", "ysh1"))
+
+# Perform t-tests
+t_test_results <- long_df %>%
+  group_by(rowname) %>%
+  filter(n_distinct(condition) == 2) %>%  # Ensure exactly 2 levels in `condition`
+  summarise(
+    p_value = tryCatch(
+      t.test(splicing_efficiency ~ condition)$p.value,  # Attempt t-test
+      error = function(e) NA  # Assign NA if t-test fails
+    )
+  )
+
+# Adjust p-values for multiple testing
+t_test_results$p_adj <- p.adjust(t_test_results$p_value, method = "BH")
+
+# Compute log2 fold changes
+log2_fold_changes <- long_df %>%
+  group_by(rowname, condition) %>%
+  summarise(mean_splicing = mean(splicing_efficiency, na.rm = TRUE)) %>%
+  spread(condition, mean_splicing) %>%
+  mutate(log2FoldChange = log2(ysh1 / wt))
+
+# Merge results
+volcano_data_ysh1 <- merge(t_test_results, log2_fold_changes, by = "rowname")
+
+# Define significance
+volcano_data_ysh1$significant <- ifelse(volcano_data_ysh1$p_adj < 0.05, "Significant", "Not Significant")
+
+# Volcano plot with interactive tooltips
+p <- ggplot(volcano_data_ysh1, aes(x = log2FoldChange, y = -log10(p_adj), color = significant, text = rowname)) +
+  geom_point() +
+  scale_color_manual(values = c("Significant" = "red", "Not Significant" = "grey")) +
+  theme_minimal() +
+  labs(x = "Log2 Fold Change", y = "-Log10(p-value)", title = "YSH1-AA vs WT-AA Splicing Defect") +
+  theme(text = element_text(family = "Helvetica"), legend.title = element_blank())
+
+# Make plot interactive
+ggplotly(p, tooltip = "text")
+ggsave("/home/guillom/Downloads/ysh1_vs_wt_splicing_volcano.svg", plot = p, width = 6, height = 4, dpi = 800)
+```
+```{r}
+# Reshape the data to long format
+long_df <- pivot_longer(
+  normalized_splicing_snp1, 
+  cols = starts_with("wt") | starts_with("snp1") | starts_with("ysh1") | starts_with("rna15"), 
+  names_to = c("condition", "replicate"), 
+  names_sep = "_", 
+  values_to = "splicing_efficiency"
+)
+
+# Convert condition explicitly
+long_df$condition <- case_when(
+  grepl("wt", long_df$condition) ~ "wt",
+  grepl("ysh1", long_df$condition) ~ "ysh1",
+  grepl("snp1", long_df$condition) ~ "snp1",
+  grepl("rna15", long_df$condition) ~ "rna15")
+
+# Subset the data to include only `wt` and `ysh1` conditions
+long_df <- long_df %>%
+  filter(condition %in% c("wt", "snp1"))
+
+# Perform t-tests
+t_test_results <- long_df %>%
+  group_by(rowname) %>%
+  filter(n_distinct(condition) == 2) %>%  # Ensure exactly 2 levels in `condition`
+  summarise(
+    p_value = tryCatch(
+      t.test(splicing_efficiency ~ condition)$p.value,  # Attempt t-test
+      error = function(e) NA  # Assign NA if t-test fails
+    )
+  )
+
+# Adjust p-values for multiple testing
+t_test_results$p_adj <- p.adjust(t_test_results$p_value, method = "BH")
+
+# Compute log2 fold changes
+log2_fold_changes <- long_df %>%
+  group_by(rowname, condition) %>%
+  summarise(mean_splicing = mean(splicing_efficiency, na.rm = TRUE)) %>%
+  spread(condition, mean_splicing) %>%
+  mutate(log2FoldChange = log2(snp1 / wt))
+
+# Merge results
+volcano_data_snp1 <- merge(t_test_results, log2_fold_changes, by = "rowname")
+
+# Define significance
+volcano_data_snp1$significant <- ifelse(volcano_data_snp1$p_adj < 0.05, "Significant", "Not Significant")
+
+# Volcano plot with interactive tooltips
+p <- ggplot(volcano_data_snp1, aes(x = log2FoldChange, y = -log10(p_adj), color = significant, text = rowname)) +
+  geom_point() +
+  scale_color_manual(values = c("Significant" = "red", "Not Significant" = "grey")) +
+  theme_minimal() +
+  labs(x = "Log2 Fold Change", y = "-Log10(p-value)", title = "SNP1-AA vs WT-AA Splicing Defect") +
+  theme(legend.title = element_blank())
+
+# Make plot interactive
+ggplotly(p, tooltip = "text")
+ggsave("/home/guillom/Downloads/snp1_vs_wt_splicing_volcano.svg", plot = p, width = 6, height = 4, dpi = 800)
+```
+```{r}
+# Reshape the data to long format
+long_df <- pivot_longer(
+  normalized_splicing_snp1, 
+  cols = starts_with("wt") | starts_with("snp1") | starts_with("ysh1") | starts_with("r15"), 
+  names_to = c("condition", "replicate"), 
+  names_sep = "_", 
+  values_to = "splicing_efficiency"
+)
+# Convert condition explicitly
+long_df$condition <- case_when(
+  grepl("wt", long_df$condition) ~ "wt",
+  grepl("ysh1", long_df$condition) ~ "ysh1",
+  grepl("snp1", long_df$condition) ~ "snp1",
+  grepl("r15", long_df$condition) ~ "r15"
+)
+
+# Subset the data to include only `wt` and `ysh1` conditions
+long_df <- long_df %>%
+  filter(condition %in% c("wt", "r15"))
+
+# Perform t-tests
+t_test_results <- long_df %>%
+  group_by(rowname) %>%
+  filter(n_distinct(condition) == 2) %>%  # Ensure exactly 2 levels in `condition`
+  summarise(
+    p_value = tryCatch(
+      t.test(splicing_efficiency ~ condition)$p.value,  # Attempt t-test
+      error = function(e) NA  # Assign NA if t-test fails
+    )
+  )
+
+# Adjust p-values for multiple testing
+t_test_results$p_adj <- p.adjust(t_test_results$p_value, method = "BH")
+
+# Compute log2 fold changes
+log2_fold_changes <- long_df %>%
+  group_by(rowname, condition) %>%
+  summarise(mean_splicing = mean(splicing_efficiency, na.rm = TRUE)) %>%
+  spread(condition, mean_splicing) %>%
+  mutate(log2FoldChange = log2(r15 / wt))
+
+# Merge results
+volcano_data_rna15 <- merge(t_test_results, log2_fold_changes, by = "rowname")
+
+# Define significance
+volcano_data_rna15$significant <- ifelse(volcano_data_rna15$p_adj < 0.05, "Significant", "Not Significant")
+
+# Volcano plot with interactive tooltips
+p <- ggplot(volcano_data_rna15, aes(x = log2FoldChange, y = -log10(p_adj), color = significant, text = rowname)) +
+  geom_point() +
+  scale_color_manual(values = c("Significant" = "red", "Not Significant" = "grey")) +
+  theme_minimal() +
+  labs(x = "Log2 Fold Change", y = "-Log10(p-value)", title = "RNA15-AA vs WT-AA Splicing Defect") +
+  theme(legend.title = element_blank())
+
+# Make plot interactive
+ggplotly(p, tooltip = "text")
+ggsave("/home/guillom/Downloads/rna15_vs_wt_splicing_volcano.svg", plot = p, width = 6, height = 4, dpi = 800)
+```
+```{r}
+rna15_up_icg_sig <- subset(volcano_data_rna15, volcano_data_rna15$log2FoldChange > 1)
+rna15_up_icg_sig <- subset(rna15_up_icg_sig, rna15_up_icg_sig$p_adj < 0.05 )
+
+ysh1_up_icg_sig <- subset(volcano_data_ysh1, volcano_data_ysh1$log2FoldChange > 1)
+ysh1_up_icg_sig <- subset(ysh1_up_icg_sig, ysh1_up_icg_sig$p_adj < 0.05 )
+
+snp1_up_icg_sig <- subset(volcano_data_snp1, volcano_data_snp1$log2FoldChange > 1)
+snp1_up_icg_sig <- subset(snp1_up_icg_sig, snp1_up_icg_sig$p_adj < 0.05 )
+
+# Extract unique values for comparison
+set1 <- ysh1_up_icg_sig$rowname
+set2 <- rna15_up_icg_sig$rowname
+
+library(ggvenn)
+
+# Create the Venn diagram
+set1 <- ysh1_up_icg_sig$rowname
+set2 <- rna15_up_icg_sig$rowname
+
+list_data <- list(
+  "Ysh1-AA" = set1,
+  "RNA15-AA" = set2
+)
+
+library(eulerr)
+
+# First Venn diagram
+set1 <- ysh1_up_icg_sig$rowname
+set2 <- rna15_up_icg_sig$rowname
+size_set1 <- length(set1)
+size_set2 <- length(set2)
+intersection_size <- length(intersect(set1, set2))
+
+venn_data <- euler(c(
+  "YSH1-AA" = size_set1 - intersection_size,  # Unique to Set1
+  "RNA15-AA" = size_set2 - intersection_size,  # Unique to Set2
+  "YSH1-AA&RNA15-AA" = intersection_size        # Intersection
+))
+
+venn_plot1 <- plot(
+  venn_data,
+  fills = c("blue", "red"),
+  alpha = 0.7,
+  edges = TRUE,
+  quantities = TRUE
+)
+
+ggsave("/home/guillom/Downloads/venn_ysh1_rna15_proportional.svg", venn_plot1, width = 6, height = 4, dpi = 800)
+```
